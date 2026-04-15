@@ -339,15 +339,70 @@ class EpgEntry {
     this.stopTimestamp,
   });
 
+  static String? _decodeBase64(String? value) {
+    if (value == null || value.isEmpty) return value;
+    try {
+      // Check if it looks like base64 (only contains valid base64 chars)
+      final b64Regex = RegExp(r'^[A-Za-z0-9+/=]+$');
+      if (b64Regex.hasMatch(value) && value.length > 3) {
+        final bytes = _base64Decode(value);
+        if (bytes != null) return bytes;
+      }
+      return value;
+    } catch (_) {
+      return value;
+    }
+  }
+
+  static String? _base64Decode(String input) {
+    try {
+      // Pad if necessary
+      String padded = input;
+      while (padded.length % 4 != 0) {
+        padded += '=';
+      }
+      final bytes = List<int>.from(_decodeB64Bytes(padded));
+      return String.fromCharCodes(bytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static List<int> _decodeB64Bytes(String input) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    final output = <int>[];
+    final buffer = <int>[];
+    for (int i = 0; i < input.length; i++) {
+      final char = input[i];
+      if (char == '=') break;
+      final idx = alphabet.indexOf(char);
+      if (idx == -1) continue;
+      buffer.add(idx);
+      if (buffer.length == 4) {
+        output.add((buffer[0] << 2) | (buffer[1] >> 4));
+        output.add(((buffer[1] & 0x0F) << 4) | (buffer[2] >> 2));
+        output.add(((buffer[2] & 0x03) << 6) | buffer[3]);
+        buffer.clear();
+      }
+    }
+    if (buffer.length == 3) {
+      output.add((buffer[0] << 2) | (buffer[1] >> 4));
+      output.add(((buffer[1] & 0x0F) << 4) | (buffer[2] >> 2));
+    } else if (buffer.length == 2) {
+      output.add((buffer[0] << 2) | (buffer[1] >> 4));
+    }
+    return output;
+  }
+
   factory EpgEntry.fromJson(Map<String, dynamic> json) {
     return EpgEntry(
       id: json['id']?.toString(),
       epgId: json['epg_id']?.toString(),
-      title: json['title']?.toString(),
+      title: _decodeBase64(json['title']?.toString()),
       lang: json['lang']?.toString(),
       start: json['start']?.toString(),
       end: json['end']?.toString(),
-      description: json['description']?.toString(),
+      description: _decodeBase64(json['description']?.toString()),
       channelId: json['channel_id']?.toString(),
       startTimestamp: json['start_timestamp']?.toString(),
       stopTimestamp: json['stop_timestamp']?.toString(),
@@ -355,9 +410,30 @@ class EpgEntry {
   }
 
   bool get isCurrentlyAiring {
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final startTs = int.tryParse(startTimestamp ?? '') ?? 0;
-    final stopTs = int.tryParse(stopTimestamp ?? '') ?? 0;
-    return now >= startTs && now <= stopTs;
+    if (start == null || end == null) return false;
+    try {
+      final now = DateTime.now();
+      final startDt = DateTime.parse(start!);
+      final endDt = DateTime.parse(end!);
+      return now.isAfter(startDt) && now.isBefore(endDt);
+    } catch (_) {
+      // Fallback to timestamp
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final startTs = int.tryParse(startTimestamp ?? '') ?? 0;
+      final stopTs = int.tryParse(stopTimestamp ?? '') ?? 0;
+      if (startTs == 0 && stopTs == 0) return false;
+      return now >= startTs && now <= stopTs;
+    }
+  }
+
+  String get timeRange {
+    try {
+      if (start != null && end != null) {
+        final s = DateTime.parse(start!);
+        final e = DateTime.parse(end!);
+        return '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')} - ${e.hour.toString().padLeft(2, '0')}:${e.minute.toString().padLeft(2, '0')}';
+      }
+    } catch (_) {}
+    return '';
   }
 }

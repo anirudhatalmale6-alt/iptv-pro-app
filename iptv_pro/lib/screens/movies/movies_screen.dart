@@ -19,6 +19,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
   String? _selectedCategoryId;
   String _searchQuery = '';
   final _searchController = TextEditingController();
+  bool _showFavorites = false;
 
   @override
   void didChangeDependencies() {
@@ -40,10 +41,15 @@ class _MoviesScreenState extends State<MoviesScreen> {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        final movies = provider.currentVodStreams.where((m) {
-          if (_searchQuery.isEmpty) return true;
-          return m.name.toLowerCase().contains(_searchQuery.toLowerCase());
-        }).toList();
+        List<VodStream> movies;
+        if (_showFavorites) {
+          movies = provider.currentVodStreams.where((m) => provider.isMovieFavorite(m.streamId)).toList();
+        } else {
+          movies = provider.currentVodStreams;
+        }
+        if (_searchQuery.isNotEmpty) {
+          movies = movies.where((m) => m.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+        }
 
         return Column(
           children: [
@@ -84,25 +90,44 @@ class _MoviesScreenState extends State<MoviesScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  // Category chips
+                  // Category chips with My List
                   SizedBox(
                     height: 32,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: provider.vodCategories.length + 1,
+                      itemCount: provider.vodCategories.length + 2,
                       itemBuilder: (context, index) {
                         if (index == 0) {
-                          return _buildCategoryChip('All', _selectedCategoryId == null, () {
-                            setState(() => _selectedCategoryId = null);
+                          return _buildCategoryChip(
+                            'My List',
+                            _showFavorites,
+                            () {
+                              setState(() {
+                                _showFavorites = !_showFavorites;
+                                if (_showFavorites) _selectedCategoryId = null;
+                              });
+                            },
+                            icon: Icons.bookmark,
+                          );
+                        }
+                        if (index == 1) {
+                          return _buildCategoryChip('All', !_showFavorites && _selectedCategoryId == null, () {
+                            setState(() {
+                              _selectedCategoryId = null;
+                              _showFavorites = false;
+                            });
                             provider.loadVodStreams(null);
                           });
                         }
-                        final cat = provider.vodCategories[index - 1];
+                        final cat = provider.vodCategories[index - 2];
                         return _buildCategoryChip(
                           cat.categoryName,
-                          _selectedCategoryId == cat.categoryId,
+                          !_showFavorites && _selectedCategoryId == cat.categoryId,
                           () {
-                            setState(() => _selectedCategoryId = cat.categoryId);
+                            setState(() {
+                              _selectedCategoryId = cat.categoryId;
+                              _showFavorites = false;
+                            });
                             provider.loadVodStreams(cat.categoryId);
                           },
                         );
@@ -117,14 +142,18 @@ class _MoviesScreenState extends State<MoviesScreen> {
             Expanded(
               child: provider.isLoading && movies.isEmpty
                   ? const Center(child: CircularProgressIndicator(color: AppColors.red))
-                  : movies.isEmpty && _selectedCategoryId != null
+                  : movies.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.movie_outlined, size: 48, color: AppColors.whiteMuted),
+                              Icon(_showFavorites ? Icons.bookmark_border : Icons.movie_outlined, size: 48, color: AppColors.whiteMuted),
                               const SizedBox(height: 8),
-                              Text('Select a category to browse movies', style: TextStyle(color: AppColors.whiteMuted)),
+                              Text(
+                                _showFavorites ? 'No movies in your list yet\nLong press a movie to add it' : 'Select a category to browse movies',
+                                style: TextStyle(color: AppColors.whiteMuted),
+                                textAlign: TextAlign.center,
+                              ),
                             ],
                           ),
                         )
@@ -141,7 +170,18 @@ class _MoviesScreenState extends State<MoviesScreen> {
                             final movie = movies[index];
                             return _MovieCard(
                               movie: movie,
+                              isFavorite: provider.isMovieFavorite(movie.streamId),
                               onTap: () => MovieDetailSheet.show(context, movie, () => _playMovie(movie)),
+                              onLongPress: () {
+                                provider.toggleMovieFavorite(movie.streamId);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(provider.isMovieFavorite(movie.streamId) ? 'Added to My List' : 'Removed from My List'),
+                                    duration: const Duration(seconds: 1),
+                                    backgroundColor: AppColors.bgCard,
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),
@@ -160,7 +200,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
     return 3;
   }
 
-  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap) {
+  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap, {IconData? icon}) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
@@ -172,13 +212,22 @@ class _MoviesScreenState extends State<MoviesScreen> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: isSelected ? AppColors.red : Colors.white10),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : AppColors.whiteDim,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 13, color: isSelected ? Colors.white : AppColors.whiteDim),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : AppColors.whiteDim,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -197,9 +246,11 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
 class _MovieCard extends StatelessWidget {
   final VodStream movie;
+  final bool isFavorite;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const _MovieCard({required this.movie, required this.onTap});
+  const _MovieCard({required this.movie, this.isFavorite = false, required this.onTap, this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +258,7 @@ class _MovieCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,6 +317,13 @@ class _MovieCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Favorite badge
+                    if (isFavorite)
+                      Positioned(
+                        bottom: 6,
+                        right: 6,
+                        child: Icon(Icons.bookmark, color: AppColors.red, size: 18),
+                      ),
                     // Rating badge
                     if (movie.ratingValue > 0)
                       Positioned(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
+import '../../providers/app_provider.dart';
 
 class MovieDetailSheet extends StatelessWidget {
   final VodStream movie;
@@ -106,6 +108,27 @@ class MovieDetailSheet extends StatelessWidget {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            // My List button
+                            Consumer<AppProvider>(
+                              builder: (context, provider, _) {
+                                final isFav = provider.isMovieFavorite(movie.streamId);
+                                return SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => provider.toggleMovieFavorite(movie.streamId),
+                                    icon: Icon(isFav ? Icons.bookmark : Icons.bookmark_border, size: 18),
+                                    label: Text(isFav ? 'In My List' : 'Add to My List'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: isFav ? AppColors.red : AppColors.whiteDim,
+                                      side: BorderSide(color: isFav ? AppColors.red : Colors.white24),
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),

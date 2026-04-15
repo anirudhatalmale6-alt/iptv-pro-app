@@ -12,7 +12,6 @@ class AppProvider extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
-  // Auth state
   bool get isLoggedIn => _service.isLoggedIn;
   UserInfo? get userInfo => _service.userInfo;
 
@@ -37,11 +36,17 @@ class AppProvider extends ChangeNotifier {
   String? get selectedVodCategoryId => _selectedVodCategoryId;
   String? get selectedSeriesCategoryId => _selectedSeriesCategoryId;
 
-  // Favorites
+  // Favorites for channels, movies, series
   Set<int> _favoriteStreamIds = {};
+  Set<int> _favoriteMovieIds = {};
+  Set<int> _favoriteSeriesIds = {};
   Set<int> get favoriteStreamIds => _favoriteStreamIds;
+  Set<int> get favoriteMovieIds => _favoriteMovieIds;
+  Set<int> get favoriteSeriesIds => _favoriteSeriesIds;
 
   bool isFavorite(int streamId) => _favoriteStreamIds.contains(streamId);
+  bool isMovieFavorite(int streamId) => _favoriteMovieIds.contains(streamId);
+  bool isSeriesFavorite(int seriesId) => _favoriteSeriesIds.contains(seriesId);
 
   void toggleFavorite(int streamId) {
     if (_favoriteStreamIds.contains(streamId)) {
@@ -53,15 +58,64 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleMovieFavorite(int streamId) {
+    if (_favoriteMovieIds.contains(streamId)) {
+      _favoriteMovieIds.remove(streamId);
+    } else {
+      _favoriteMovieIds.add(streamId);
+    }
+    _saveFavorites();
+    notifyListeners();
+  }
+
+  void toggleSeriesFavorite(int seriesId) {
+    if (_favoriteSeriesIds.contains(seriesId)) {
+      _favoriteSeriesIds.remove(seriesId);
+    } else {
+      _favoriteSeriesIds.add(seriesId);
+    }
+    _saveFavorites();
+    notifyListeners();
+  }
+
   Future<void> _saveFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setStringList('favorites', _favoriteStreamIds.map((e) => e.toString()).toList());
+    prefs.setStringList('movie_favorites', _favoriteMovieIds.map((e) => e.toString()).toList());
+    prefs.setStringList('series_favorites', _favoriteSeriesIds.map((e) => e.toString()).toList());
   }
 
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList('favorites') ?? [];
-    _favoriteStreamIds = list.map((e) => int.parse(e)).toSet();
+    _favoriteStreamIds = (prefs.getStringList('favorites') ?? []).map((e) => int.parse(e)).toSet();
+    _favoriteMovieIds = (prefs.getStringList('movie_favorites') ?? []).map((e) => int.parse(e)).toSet();
+    _favoriteSeriesIds = (prefs.getStringList('series_favorites') ?? []).map((e) => int.parse(e)).toSet();
+  }
+
+  // Resume positions for VOD
+  final Map<int, Duration> _resumePositions = {};
+  Duration? getResumePosition(int streamId) => _resumePositions[streamId];
+
+  void saveResumePosition(int streamId, Duration position) {
+    _resumePositions[streamId] = position;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setInt('resume_$streamId', position.inMilliseconds);
+    });
+  }
+
+  Future<void> _loadResumePositions() async {
+    // Loaded on demand per stream
+  }
+
+  Future<Duration?> loadResumePosition(int streamId) async {
+    if (_resumePositions.containsKey(streamId)) return _resumePositions[streamId];
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt('resume_$streamId');
+    if (ms != null) {
+      _resumePositions[streamId] = Duration(milliseconds: ms);
+      return _resumePositions[streamId];
+    }
+    return null;
   }
 
   Future<bool> login(String server, String username, String password) async {
@@ -77,6 +131,8 @@ class AppProvider extends ChangeNotifier {
         prefs.setString('username', username);
         prefs.setString('password', password);
         await _loadFavorites();
+        // Auto-load all categories on login
+        _autoLoadCategories();
       } else {
         _error = 'Authentication failed. Check your credentials.';
       }
@@ -88,6 +144,31 @@ class AppProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<void> _autoLoadCategories() async {
+    // Load all categories in parallel
+    try {
+      final results = await Future.wait([
+        _service.getLiveCategories(),
+        _service.getVodCategories(),
+        _service.getSeriesCategories(),
+      ]);
+      _liveCategories = results[0] as List<Category>;
+      _vodCategories = results[1] as List<Category>;
+      _seriesCategories = results[2] as List<Category>;
+      notifyListeners();
+
+      // Auto-load first live category
+      if (_liveCategories.isNotEmpty) {
+        loadLiveStreams(_liveCategories.first.categoryId);
+      }
+    } catch (e) {
+      // Individual loads as fallback
+      loadLiveCategories();
+      loadVodCategories();
+      loadSeriesCategories();
     }
   }
 
@@ -125,12 +206,27 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  // All live streams cache for favorites/search
+  List<LiveStream> _allLiveStreams = [];
+
   Future<void> loadLiveStreams(String? categoryId) async {
     _selectedLiveCategoryId = categoryId;
     _isLoading = true;
     notifyListeners();
     try {
-      _currentStreams = await _service.getLiveStreams(categoryId: categoryId);
+      if (categoryId == '__favorites__') {
+        // Show only favorite streams from cache
+        if (_allLiveStreams.isEmpty) {
+          _allLiveStreams = await _service.getLiveStreams();
+        }
+        _currentStreams = _allLiveStreams.where((s) => _favoriteStreamIds.contains(s.streamId)).toList();
+      } else {
+        _currentStreams = await _service.getLiveStreams(categoryId: categoryId);
+        // Cache all streams when loading without category
+        if (categoryId == null) {
+          _allLiveStreams = _currentStreams;
+        }
+      }
       _isLoading = false;
       notifyListeners();
     } catch (e) {

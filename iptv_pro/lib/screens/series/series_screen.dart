@@ -18,6 +18,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
   String? _selectedCategoryId;
   String _searchQuery = '';
   final _searchController = TextEditingController();
+  bool _showFavorites = false;
 
   @override
   void didChangeDependencies() {
@@ -38,10 +39,15 @@ class _SeriesScreenState extends State<SeriesScreen> {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        final series = provider.currentSeries.where((s) {
-          if (_searchQuery.isEmpty) return true;
-          return s.name.toLowerCase().contains(_searchQuery.toLowerCase());
-        }).toList();
+        List<SeriesItem> series;
+        if (_showFavorites) {
+          series = provider.currentSeries.where((s) => provider.isSeriesFavorite(s.seriesId)).toList();
+        } else {
+          series = provider.currentSeries.toList();
+        }
+        if (_searchQuery.isNotEmpty) {
+          series = series.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+        }
 
         return Column(
           children: [
@@ -82,17 +88,36 @@ class _SeriesScreenState extends State<SeriesScreen> {
                     height: 32,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: provider.seriesCategories.length + 1,
+                      itemCount: provider.seriesCategories.length + 2,
                       itemBuilder: (context, index) {
                         if (index == 0) {
-                          return _buildChip('All', _selectedCategoryId == null, () {
-                            setState(() => _selectedCategoryId = null);
+                          return _buildChip(
+                            'My List',
+                            _showFavorites,
+                            () {
+                              setState(() {
+                                _showFavorites = !_showFavorites;
+                                if (_showFavorites) _selectedCategoryId = null;
+                              });
+                            },
+                            icon: Icons.bookmark,
+                          );
+                        }
+                        if (index == 1) {
+                          return _buildChip('All', !_showFavorites && _selectedCategoryId == null, () {
+                            setState(() {
+                              _selectedCategoryId = null;
+                              _showFavorites = false;
+                            });
                             provider.loadSeries(null);
                           });
                         }
-                        final cat = provider.seriesCategories[index - 1];
-                        return _buildChip(cat.categoryName, _selectedCategoryId == cat.categoryId, () {
-                          setState(() => _selectedCategoryId = cat.categoryId);
+                        final cat = provider.seriesCategories[index - 2];
+                        return _buildChip(cat.categoryName, !_showFavorites && _selectedCategoryId == cat.categoryId, () {
+                          setState(() {
+                            _selectedCategoryId = cat.categoryId;
+                            _showFavorites = false;
+                          });
                           provider.loadSeries(cat.categoryId);
                         });
                       },
@@ -110,9 +135,13 @@ class _SeriesScreenState extends State<SeriesScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.tv, size: 48, color: AppColors.whiteMuted),
+                              Icon(_showFavorites ? Icons.bookmark_border : Icons.tv, size: 48, color: AppColors.whiteMuted),
                               const SizedBox(height: 8),
-                              Text('Select a category to browse series', style: TextStyle(color: AppColors.whiteMuted)),
+                              Text(
+                                _showFavorites ? 'No series in your list yet\nLong press a series to add it' : 'Select a category to browse series',
+                                style: TextStyle(color: AppColors.whiteMuted),
+                                textAlign: TextAlign.center,
+                              ),
                             ],
                           ),
                         )
@@ -129,10 +158,21 @@ class _SeriesScreenState extends State<SeriesScreen> {
                             final s = series[index];
                             return _SeriesCard(
                               series: s,
+                              isFavorite: provider.isSeriesFavorite(s.seriesId),
                               onTap: () {
                                 Navigator.of(context).push(MaterialPageRoute(
                                   builder: (_) => SeriesDetailScreen(series: s),
                                 ));
+                              },
+                              onLongPress: () {
+                                provider.toggleSeriesFavorite(s.seriesId);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(provider.isSeriesFavorite(s.seriesId) ? 'Added to My List' : 'Removed from My List'),
+                                    duration: const Duration(seconds: 1),
+                                    backgroundColor: AppColors.bgCard,
+                                  ),
+                                );
                               },
                             );
                           },
@@ -152,7 +192,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
     return 3;
   }
 
-  Widget _buildChip(String label, bool isSelected, VoidCallback onTap) {
+  Widget _buildChip(String label, bool isSelected, VoidCallback onTap, {IconData? icon}) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
@@ -164,7 +204,16 @@ class _SeriesScreenState extends State<SeriesScreen> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: isSelected ? AppColors.red : Colors.white10),
           ),
-          child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.whiteDim)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 13, color: isSelected ? Colors.white : AppColors.whiteDim),
+                const SizedBox(width: 4),
+              ],
+              Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.whiteDim)),
+            ],
+          ),
         ),
       ),
     );
@@ -173,9 +222,11 @@ class _SeriesScreenState extends State<SeriesScreen> {
 
 class _SeriesCard extends StatelessWidget {
   final SeriesItem series;
+  final bool isFavorite;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const _SeriesCard({required this.series, required this.onTap});
+  const _SeriesCard({required this.series, this.isFavorite = false, required this.onTap, this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +234,7 @@ class _SeriesCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,6 +260,12 @@ class _SeriesCard extends StatelessWidget {
                       )
                     else
                       Container(color: AppColors.bgCard, child: const Center(child: Icon(Icons.tv, color: AppColors.whiteMuted, size: 32))),
+                    if (isFavorite)
+                      Positioned(
+                        bottom: 6,
+                        right: 6,
+                        child: Icon(Icons.bookmark, color: AppColors.red, size: 18),
+                      ),
                     if (series.ratingValue > 0)
                       Positioned(
                         top: 6,

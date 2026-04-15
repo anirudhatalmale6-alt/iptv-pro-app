@@ -47,6 +47,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _isPlaying = false;
   bool _showControls = true;
   bool _showInfo = false;
+  bool _subtitlesEnabled = false;
   Duration _position = Duration.zero;
   Duration _totalDuration = Duration.zero;
   List<EpgEntry> _epgEntries = [];
@@ -319,7 +320,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return Center(
         child: AspectRatio(
           aspectRatio: _controller!.value.aspectRatio,
-          child: VideoPlayer(_controller!),
+          child: Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              VideoPlayer(_controller!),
+              if (_subtitlesEnabled)
+                ClosedCaption(
+                  text: _controller!.value.caption.text,
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                    backgroundColor: Colors.black54,
+                  ),
+                ),
+            ],
+          ),
         ),
       );
     }
@@ -363,6 +378,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     ],
                   ),
                 ),
+                // Subtitles button
+                if (!widget.isLive)
+                  IconButton(
+                    icon: Icon(
+                      _subtitlesEnabled ? Icons.closed_caption : Icons.closed_caption_off,
+                      color: _subtitlesEnabled ? AppColors.red : Colors.white,
+                    ),
+                    onPressed: () {
+                      setState(() => _subtitlesEnabled = !_subtitlesEnabled);
+                      if (_controller != null) {
+                        _controller!.setClosedCaptionFile(
+                          _subtitlesEnabled ? _controller!.closedCaptionFile : null,
+                        );
+                      }
+                    },
+                  ),
                 // Info button
                 IconButton(
                   icon: const Icon(Icons.info_outline, color: Colors.white),
