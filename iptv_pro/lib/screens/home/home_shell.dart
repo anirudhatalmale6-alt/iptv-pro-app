@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 import '../../config/theme.dart';
+import '../../providers/mini_player_provider.dart';
+import '../../providers/app_provider.dart';
 import '../home/home_screen.dart';
 import '../tv_guide/tv_guide_screen.dart';
 import '../movies/movies_screen.dart';
 import '../series/series_screen.dart';
 import '../settings/settings_screen.dart';
+import '../player/player_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -40,15 +45,21 @@ class _HomeShellState extends State<HomeShell> {
 
     return Scaffold(
       backgroundColor: AppColors.bgDeep,
-      body: Column(
+      body: Stack(
         children: [
-          if (isWide) _buildTopBar(),
-          Expanded(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: _screens,
-            ),
+          Column(
+            children: [
+              if (isWide) _buildTopBar(),
+              Expanded(
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: _screens,
+                ),
+              ),
+            ],
           ),
+          // Mini player overlay
+          _MiniPlayerOverlay(),
         ],
       ),
       bottomNavigationBar: isWide
@@ -199,6 +210,131 @@ class _TabItem {
   final IconData icon;
   final String label;
   const _TabItem({required this.icon, required this.label});
+}
+
+class _MiniPlayerOverlay extends StatefulWidget {
+  @override
+  State<_MiniPlayerOverlay> createState() => _MiniPlayerOverlayState();
+}
+
+class _MiniPlayerOverlayState extends State<_MiniPlayerOverlay> {
+  Offset _position = const Offset(16, 100);
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<MiniPlayerProvider>(
+      builder: (context, miniPlayer, _) {
+        if (!miniPlayer.visible || miniPlayer.controller == null) return const SizedBox();
+
+        final ctrl = miniPlayer.controller!;
+        final screenSize = MediaQuery.of(context).size;
+        // Mini player size: 200x120 (16:9-ish)
+        const width = 200.0;
+        const height = 120.0;
+
+        return Positioned(
+          left: _position.dx.clamp(0.0, screenSize.width - width),
+          top: _position.dy.clamp(0.0, screenSize.height - height - 80),
+          child: GestureDetector(
+            onPanUpdate: (details) {
+              setState(() {
+                _position = Offset(
+                  _position.dx + details.delta.dx,
+                  _position.dy + details.delta.dy,
+                );
+              });
+            },
+            onTap: () {
+              // Go back to full screen player
+              final ctrl = miniPlayer.takeController();
+              if (ctrl != null) {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => PlayerScreen(
+                    url: miniPlayer.url ?? '',
+                    title: miniPlayer.title ?? '',
+                    isLive: miniPlayer.isLive,
+                    channelIcon: miniPlayer.channelIcon,
+                    streamId: miniPlayer.streamId,
+                    channelList: miniPlayer.channelList,
+                    currentChannelIndex: miniPlayer.channelIndex,
+                    existingController: ctrl,
+                  ),
+                ));
+              }
+            },
+            child: Material(
+              elevation: 12,
+              borderRadius: BorderRadius.circular(10),
+              shadowColor: Colors.black54,
+              child: Container(
+                width: width,
+                height: height,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.red.withOpacity(0.5), width: 1.5),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(9),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (ctrl.value.isInitialized)
+                        VideoPlayer(ctrl)
+                      else
+                        const Center(child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2)),
+                      // Title bar
+                      Positioned(
+                        bottom: 0, left: 0, right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                            ),
+                          ),
+                          child: Text(
+                            miniPlayer.title ?? '',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      // Close button
+                      Positioned(
+                        top: 4, right: 4,
+                        child: GestureDetector(
+                          onTap: () => miniPlayer.dismiss(),
+                          child: Container(
+                            width: 22, height: 22,
+                            decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), shape: BoxShape.circle),
+                            child: const Icon(Icons.close, color: Colors.white, size: 14),
+                          ),
+                        ),
+                      ),
+                      // Live badge
+                      if (miniPlayer.isLive)
+                        Positioned(
+                          top: 4, left: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(color: AppColors.red, borderRadius: BorderRadius.circular(3)),
+                            child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.w800)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _StatBadge extends StatelessWidget {

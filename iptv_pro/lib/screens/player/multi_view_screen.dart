@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/mini_player_provider.dart';
 import 'player_screen.dart';
 
 class MultiViewScreen extends StatefulWidget {
@@ -31,6 +32,10 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+    // Dismiss mini player to free up connection slot
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MiniPlayerProvider>().dismiss();
+    });
     // Show picker for slot 0 immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
@@ -55,8 +60,24 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
         ctrl.setVolume(slot == _focusedIndex ? 1.0 : 0.0);
         setState(() {});
       }
-    }).catchError((_) {
-      if (mounted) setState(() {});
+    }).catchError((e) {
+      if (mounted) {
+        // Retry once after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && _views[slot] != null && !_views[slot]!.controller.value.isInitialized) {
+            _views[slot]!.controller.initialize().then((_) {
+              if (mounted) {
+                _views[slot]!.controller.play();
+                _views[slot]!.controller.setVolume(slot == _focusedIndex ? 1.0 : 0.0);
+                setState(() {});
+              }
+            }).catchError((_) {
+              if (mounted) setState(() {});
+            });
+          }
+        });
+        setState(() {});
+      }
     });
     setState(() {});
   }

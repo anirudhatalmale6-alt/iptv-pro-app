@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
 import 'providers/app_provider.dart';
+import 'providers/mini_player_provider.dart';
 import 'screens/login/login_screen.dart';
 
 void main() {
@@ -14,8 +15,11 @@ class IPTVProApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppProvider()),
+        ChangeNotifierProvider(create: (_) => MiniPlayerProvider()),
+      ],
       child: MaterialApp(
         title: 'IPTV Pro',
         debugShowCheckedModeBanner: false,

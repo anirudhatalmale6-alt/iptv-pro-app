@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/mini_player_provider.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String url;
@@ -19,6 +20,8 @@ class PlayerScreen extends StatefulWidget {
   // For navigating channels
   final List<LiveStream>? channelList;
   final int? currentChannelIndex;
+  // For resuming from mini player
+  final VideoPlayerController? existingController;
 
   const PlayerScreen({
     super.key,
@@ -33,6 +36,7 @@ class PlayerScreen extends StatefulWidget {
     this.rating,
     this.channelList,
     this.currentChannelIndex,
+    this.existingController,
   });
 
   @override
@@ -55,6 +59,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   String _currentUrl = '';
   String _currentTitle = '';
 
+  bool _transferToMiniOnPop = true;
+
   @override
   void initState() {
     super.initState();
@@ -67,7 +73,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _currentUrl = widget.url;
     _currentTitle = widget.title;
     _currentChannelIdx = widget.currentChannelIndex ?? 0;
-    _initPlayer();
+    // Dismiss any existing mini player
+    context.read<MiniPlayerProvider>().dismiss();
+    if (widget.existingController != null) {
+      // Resume from mini player
+      _controller = widget.existingController;
+      _controller!.addListener(_onUpdate);
+      _totalDuration = _controller!.value.duration;
+      _isInitializing = false;
+      _isPlaying = _controller!.value.isPlaying;
+      _autoHideControls();
+    } else {
+      _initPlayer();
+    }
     if (widget.isLive && widget.streamId != null) {
       _loadEpg(widget.streamId!);
     }
@@ -273,6 +291,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _initPlayer();
   }
 
+  void _goBackWithMiniPlayer() {
+    if (_transferToMiniOnPop && _controller != null && _controller!.value.isInitialized && widget.isLive) {
+      _controller!.removeListener(_onUpdate);
+      context.read<MiniPlayerProvider>().startMiniPlayer(
+        controller: _controller!,
+        title: _currentTitle,
+        url: _currentUrl,
+        channelIcon: widget.channelIcon,
+        streamId: widget.streamId,
+        isLive: widget.isLive,
+        channelList: widget.channelList,
+        channelIndex: _currentChannelIdx,
+      );
+      _controller = null; // Don't dispose - mini player owns it now
+    }
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    Navigator.pop(context);
+  }
+
   @override
   void dispose() {
     _controller?.removeListener(_onUpdate);
@@ -350,7 +392,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     } else if (key == LogicalKeyboardKey.info || key == LogicalKeyboardKey.contextMenu) {
       _toggleInfo();
     } else if (key == LogicalKeyboardKey.goBack || key == LogicalKeyboardKey.escape) {
-      Navigator.pop(context);
+      _goBackWithMiniPlayer();
     }
   }
 
@@ -435,7 +477,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
             child: Row(
               children: [
-                IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
+                IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: _goBackWithMiniPlayer),
                 if (widget.channelIcon != null && widget.channelIcon!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(right: 10),
