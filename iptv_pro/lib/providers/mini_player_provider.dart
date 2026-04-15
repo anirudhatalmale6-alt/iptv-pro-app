@@ -64,4 +64,42 @@ class MiniPlayerProvider extends ChangeNotifier {
     notifyListeners();
     return ctrl;
   }
+
+  /// Switch to a different channel while in split-screen mode
+  Future<void> switchChannel({
+    required String url,
+    required String title,
+    String? channelIcon,
+    int? streamId,
+    List<LiveStream>? channelList,
+    int? channelIndex,
+  }) async {
+    // Dispose old controller
+    _controller?.dispose();
+    _controller = null;
+    _title = title;
+    _url = url;
+    _channelIcon = channelIcon;
+    _streamId = streamId;
+    _isLive = true;
+    _channelList = channelList;
+    _channelIndex = channelIndex;
+    notifyListeners();
+
+    // Create and init new controller
+    try {
+      final ctrl = VideoPlayerController.networkUrl(
+        Uri.parse(url),
+        httpHeaders: const {'User-Agent': 'IPTV Pro/1.0'},
+      );
+      await ctrl.initialize();
+      ctrl.play();
+      _controller = ctrl;
+      notifyListeners();
+    } catch (e) {
+      // If init fails, hide the player
+      _visible = false;
+      notifyListeners();
+    }
+  }
 }

@@ -58,8 +58,8 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ],
           ),
-          // Mini player overlay
-          _MiniPlayerOverlay(),
+          // Mini player overlay (hidden on HOME tab - split-screen handles it there)
+          if (_currentIndex != 0) _MiniPlayerOverlay(),
         ],
       ),
       bottomNavigationBar: isWide

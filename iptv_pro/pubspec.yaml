@@ -1,7 +1,7 @@
 name: iptv_pro
 description: "IPTV Pro - Premium Streaming App"
 publish_to: 'none'
-version: 1.0.0+1
+version: 3.4.0+7
 
 environment:
   sdk: ^3.6.1
@@ -16,6 +16,7 @@ dependencies:
   cached_network_image: ^3.3.1
   google_fonts: ^6.1.0
   video_player: ^2.8.2
+  wakelock_plus: ^1.2.8
   shimmer: ^3.0.0
   intl: ^0.19.0
 

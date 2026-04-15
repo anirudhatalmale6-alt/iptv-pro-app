@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
@@ -30,6 +31,7 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     // Dismiss mini player to free up connection slot
@@ -132,6 +134,7 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     for (final v in _views) {
       v?.controller.dispose();
     }

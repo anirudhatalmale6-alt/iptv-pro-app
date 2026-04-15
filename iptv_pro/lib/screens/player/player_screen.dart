@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
@@ -64,6 +65,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable(); // Keep screen on during playback
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -268,7 +270,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
-                  'Subtitle availability depends on the stream source. If subtitles are embedded in the stream they will display automatically.',
+                  'Subtitles display when available in the stream. Select a language preference - captions will show if the stream includes them.',
                   style: TextStyle(color: AppColors.whiteMuted, fontSize: 10),
                   textAlign: TextAlign.center,
                 ),
@@ -317,6 +319,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    WakelockPlus.disable(); // Allow screen to turn off again
     _controller?.removeListener(_onUpdate);
     _controller?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -502,14 +505,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ),
                 ),
                 // Subtitles button
-                if (!widget.isLive)
-                  IconButton(
-                    icon: Icon(
-                      _subtitlesEnabled ? Icons.closed_caption : Icons.closed_caption_off,
-                      color: _subtitlesEnabled ? AppColors.red : Colors.white,
-                    ),
-                    onPressed: _showSubtitlePicker,
+                IconButton(
+                  icon: Icon(
+                    _subtitlesEnabled ? Icons.closed_caption : Icons.closed_caption_off,
+                    color: _subtitlesEnabled ? AppColors.red : Colors.white,
                   ),
+                  onPressed: _showSubtitlePicker,
+                ),
                 // Info button
                 IconButton(
                   icon: const Icon(Icons.info_outline, color: Colors.white),

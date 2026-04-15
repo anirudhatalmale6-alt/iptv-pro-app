@@ -29,7 +29,12 @@ class _MoviesScreenState extends State<MoviesScreen> {
     if (!_loaded) {
       _loaded = true;
       final provider = context.read<AppProvider>();
-      provider.loadVodCategories();
+      if (provider.vodCategories.isEmpty) {
+        provider.loadVodCategories();
+      }
+      if (provider.vodCategories.isNotEmpty && provider.currentVodStreams.isEmpty) {
+        provider.loadVodStreams(provider.vodCategories.first.categoryId);
+      }
     }
   }
 
@@ -170,7 +175,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
             // Movie grid
             Expanded(
-              child: provider.isLoading && movies.isEmpty
+              child: provider.isLoadingVod && movies.isEmpty
                   ? const Center(child: CircularProgressIndicator(color: AppColors.red))
                   : movies.isEmpty
                       ? Center(

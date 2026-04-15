@@ -7,8 +7,15 @@ class AppProvider extends ChangeNotifier {
   final XtreamService _service = XtreamService();
   XtreamService get service => _service;
 
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
+  // Separate loading states per section
+  bool _isLoadingLive = false;
+  bool _isLoadingVod = false;
+  bool _isLoadingSeries = false;
+  bool get isLoading => _isLoadingLive || _isLoadingVod || _isLoadingSeries;
+  bool get isLoadingLive => _isLoadingLive;
+  bool get isLoadingVod => _isLoadingVod;
+  bool get isLoadingSeries => _isLoadingSeries;
+
   String? _error;
   String? get error => _error;
 
@@ -36,7 +43,7 @@ class AppProvider extends ChangeNotifier {
   String? get selectedVodCategoryId => _selectedVodCategoryId;
   String? get selectedSeriesCategoryId => _selectedSeriesCategoryId;
 
-  // Favorites for channels, movies, series
+  // Favorites
   Set<int> _favoriteStreamIds = {};
   Set<int> _favoriteMovieIds = {};
   Set<int> _favoriteSeriesIds = {};
@@ -92,7 +99,7 @@ class AppProvider extends ChangeNotifier {
     _favoriteSeriesIds = (prefs.getStringList('series_favorites') ?? []).map((e) => int.parse(e)).toSet();
   }
 
-  // Resume positions for VOD
+  // Resume positions
   final Map<int, Duration> _resumePositions = {};
   Duration? getResumePosition(int streamId) => _resumePositions[streamId];
 
@@ -101,10 +108,6 @@ class AppProvider extends ChangeNotifier {
     SharedPreferences.getInstance().then((prefs) {
       prefs.setInt('resume_$streamId', position.inMilliseconds);
     });
-  }
-
-  Future<void> _loadResumePositions() async {
-    // Loaded on demand per stream
   }
 
   Future<Duration?> loadResumePosition(int streamId) async {
@@ -118,8 +121,10 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  // ---- Auth ----
+
   Future<bool> login(String server, String username, String password) async {
-    _isLoading = true;
+    _isLoadingLive = true;
     _error = null;
     notifyListeners();
 
@@ -131,24 +136,24 @@ class AppProvider extends ChangeNotifier {
         prefs.setString('username', username);
         prefs.setString('password', password);
         await _loadFavorites();
-        // Auto-load all categories on login
+        _isLoadingLive = false;
+        notifyListeners();
         _autoLoadCategories();
       } else {
         _error = 'Authentication failed. Check your credentials.';
+        _isLoadingLive = false;
+        notifyListeners();
       }
-      _isLoading = false;
-      notifyListeners();
       return success;
     } catch (e) {
       _error = 'Connection error: $e';
-      _isLoading = false;
+      _isLoadingLive = false;
       notifyListeners();
       return false;
     }
   }
 
   Future<void> _autoLoadCategories() async {
-    // Load all categories in parallel
     try {
       final results = await Future.wait([
         _service.getLiveCategories(),
@@ -171,7 +176,6 @@ class AppProvider extends ChangeNotifier {
         loadSeries(_seriesCategories.first.categoryId);
       }
     } catch (e) {
-      // Individual loads as fallback
       loadLiveCategories();
       loadVodCategories();
       loadSeriesCategories();
@@ -203,6 +207,8 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---- Live ----
+
   Future<void> loadLiveCategories() async {
     try {
       _liveCategories = await _service.getLiveCategories();
@@ -212,36 +218,35 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // All live streams cache for favorites/search
   List<LiveStream> _allLiveStreams = [];
   List<LiveStream> get allLiveStreams => _allLiveStreams;
 
   Future<void> loadLiveStreams(String? categoryId) async {
     _selectedLiveCategoryId = categoryId;
-    _isLoading = true;
+    _isLoadingLive = true;
     notifyListeners();
     try {
       if (categoryId == '__favorites__') {
-        // Show only favorite streams from cache
         if (_allLiveStreams.isEmpty) {
           _allLiveStreams = await _service.getLiveStreams();
         }
         _currentStreams = _allLiveStreams.where((s) => _favoriteStreamIds.contains(s.streamId)).toList();
       } else {
         _currentStreams = await _service.getLiveStreams(categoryId: categoryId);
-        // Cache all streams when loading without category
         if (categoryId == null) {
           _allLiveStreams = _currentStreams;
         }
       }
-      _isLoading = false;
+      _isLoadingLive = false;
       notifyListeners();
     } catch (e) {
-      _isLoading = false;
+      _isLoadingLive = false;
       _error = 'Failed to load streams';
       notifyListeners();
     }
   }
+
+  // ---- VOD / Movies ----
 
   Future<void> loadVodCategories() async {
     try {
@@ -252,24 +257,22 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // All VOD streams cache for search/favorites
   List<VodStream> _allVodStreams = [];
   List<VodStream> get allVodStreams => _allVodStreams;
 
   Future<void> loadVodStreams(String? categoryId) async {
     _selectedVodCategoryId = categoryId;
-    _isLoading = true;
+    _isLoadingVod = true;
     notifyListeners();
     try {
       _currentVodStreams = await _service.getVodStreams(categoryId: categoryId);
-      // Cache all streams when loading without category
       if (categoryId == null) {
         _allVodStreams = _currentVodStreams;
       }
-      _isLoading = false;
+      _isLoadingVod = false;
       notifyListeners();
     } catch (e) {
-      _isLoading = false;
+      _isLoadingVod = false;
       _error = 'Failed to load movies';
       notifyListeners();
     }
@@ -279,29 +282,27 @@ class AppProvider extends ChangeNotifier {
 
   Future<List<VodStream>> searchVodStreams(String query) async {
     final q = query.toLowerCase();
-    // First search in current category results
     final localResults = _currentVodStreams.where((m) => m.name.toLowerCase().contains(q)).toList();
 
-    // If we have all VOD cached, search there
     if (_allVodStreams.isNotEmpty) {
       return _allVodStreams.where((m) => m.name.toLowerCase().contains(q)).toList();
     }
 
-    // Start loading all VOD in background if not already loading
     if (!_loadingAllVod) {
       _loadingAllVod = true;
       try {
         _allVodStreams = await _service.getVodStreams();
         _loadingAllVod = false;
-        notifyListeners(); // Trigger rebuild with full results
+        notifyListeners();
       } catch (e) {
         _loadingAllVod = false;
       }
     }
 
-    // Return local results for now
     return localResults;
   }
+
+  // ---- Series ----
 
   Future<void> loadSeriesCategories() async {
     try {
@@ -312,23 +313,22 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // All series cache for search/favorites
   List<SeriesItem> _allSeries = [];
   List<SeriesItem> get allSeries => _allSeries;
 
   Future<void> loadSeries(String? categoryId) async {
     _selectedSeriesCategoryId = categoryId;
-    _isLoading = true;
+    _isLoadingSeries = true;
     notifyListeners();
     try {
       _currentSeries = await _service.getSeries(categoryId: categoryId);
       if (categoryId == null) {
         _allSeries = _currentSeries;
       }
-      _isLoading = false;
+      _isLoadingSeries = false;
       notifyListeners();
     } catch (e) {
-      _isLoading = false;
+      _isLoadingSeries = false;
       _error = 'Failed to load series';
       notifyListeners();
     }
@@ -357,6 +357,8 @@ class AppProvider extends ChangeNotifier {
 
     return localResults;
   }
+
+  // ---- Util ----
 
   Future<SeriesInfo> getSeriesInfo(int seriesId) async {
     return await _service.getSeriesInfo(seriesId);

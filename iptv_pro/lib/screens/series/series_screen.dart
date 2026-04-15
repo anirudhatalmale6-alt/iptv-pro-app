@@ -27,7 +27,15 @@ class _SeriesScreenState extends State<SeriesScreen> {
     super.didChangeDependencies();
     if (!_loaded) {
       _loaded = true;
-      context.read<AppProvider>().loadSeriesCategories();
+      final provider = context.read<AppProvider>();
+      // Only load if not already loaded by auto-load
+      if (provider.seriesCategories.isEmpty) {
+        provider.loadSeriesCategories();
+      }
+      // If categories exist but no series loaded yet, load first category
+      if (provider.seriesCategories.isNotEmpty && provider.currentSeries.isEmpty) {
+        provider.loadSeries(provider.seriesCategories.first.categoryId);
+      }
     }
   }
 
@@ -158,7 +166,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
             ),
 
             Expanded(
-              child: provider.isLoading && series.isEmpty
+              child: provider.isLoadingSeries && series.isEmpty
                   ? const Center(child: CircularProgressIndicator(color: AppColors.red))
                   : series.isEmpty
                       ? Center(
