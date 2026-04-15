@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -27,7 +28,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
   int _pickingForSlot = 0;
   String _pickerSearch = '';
   final _pickerSearchController = TextEditingController();
-  // For category browsing in picker
   List<LiveStream> _pickerChannels = [];
   String? _pickerCategoryId;
   bool _pickerLoading = false;
@@ -42,7 +42,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MiniPlayerProvider>().dismiss();
     });
-    // Show picker for slot 0 immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _showChannelPicker = true;
@@ -52,36 +51,21 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
   }
 
   void _startChannel(int slot, LiveStream channel) {
-    _views[slot]?.controller.dispose();
+    _views[slot]?.player.dispose();
 
     final provider = context.read<AppProvider>();
     final url = provider.buildLiveUrl(channel.streamId);
-    final ctrl = VideoPlayerController.networkUrl(Uri.parse(url), httpHeaders: const {'User-Agent': 'IPTV Pro/1.0'});
-    _views[slot] = _ViewData(channel: channel, controller: ctrl, url: url);
+    final player = Player();
+    final videoController = VideoController(player);
+    _views[slot] = _ViewData(channel: channel, player: player, videoController: videoController, url: url);
 
-    ctrl.initialize().then((_) {
+    player.open(Media(url)).then((_) {
       if (mounted) {
-        ctrl.play();
-        ctrl.setVolume(slot == _focusedIndex ? 1.0 : 0.0);
+        player.setVolume(slot == _focusedIndex ? 100.0 : 0.0);
         setState(() {});
       }
     }).catchError((e) {
-      if (mounted) {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted && _views[slot] != null && !_views[slot]!.controller.value.isInitialized) {
-            _views[slot]!.controller.initialize().then((_) {
-              if (mounted) {
-                _views[slot]!.controller.play();
-                _views[slot]!.controller.setVolume(slot == _focusedIndex ? 1.0 : 0.0);
-                setState(() {});
-              }
-            }).catchError((_) {
-              if (mounted) setState(() {});
-            });
-          }
-        });
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     });
     setState(() {});
   }
@@ -110,16 +94,14 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _pickerLoading = false);
-      }
+      if (mounted) setState(() => _pickerLoading = false);
     }
   }
 
   void _switchLayout(int count) {
     if (count < _layout) {
       for (int i = count; i < 4; i++) {
-        _views[i]?.controller.dispose();
+        _views[i]?.player.dispose();
         _views[i] = null;
       }
     }
@@ -131,7 +113,7 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
 
   void _focusView(int index) {
     for (int i = 0; i < _views.length; i++) {
-      _views[i]?.controller.setVolume(i == index ? 1.0 : 0.0);
+      _views[i]?.player.setVolume(i == index ? 100.0 : 0.0);
     }
     setState(() => _focusedIndex = index);
   }
@@ -158,7 +140,7 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
   void dispose() {
     WakelockPlus.disable();
     for (final v in _views) {
-      v?.controller.dispose();
+      v?.player.dispose();
     }
     _pickerSearchController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -173,7 +155,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
       body: Stack(
         children: [
           _buildGrid(),
-          // Top controls
           Positioned(
             top: 0, left: 0, right: 0,
             child: Container(
@@ -223,11 +204,9 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
                 const SizedBox(width: 8),
                 Text('Pick channel for View ${_pickingForSlot + 1}',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-                const Spacer(),
               ],
             ),
           ),
-          // Search bar
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: SizedBox(
@@ -257,7 +236,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
               ),
             ),
           ),
-          // Category chips
           if (categories.isNotEmpty)
             SizedBox(
               height: 36,
@@ -287,7 +265,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
               ),
             ),
           const SizedBox(height: 4),
-          // Channel grid
           Expanded(
             child: _pickerLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2))
@@ -428,10 +405,10 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (view.controller.value.isInitialized)
-              VideoPlayer(view.controller)
-            else
-              const Center(child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2)),
+            Video(
+              controller: view.videoController,
+              controls: NoVideoControls,
+            ),
             Positioned(
               bottom: 4, left: 6,
               child: Container(
@@ -469,10 +446,11 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
 
 class _ViewData {
   final LiveStream channel;
-  final VideoPlayerController controller;
+  final Player player;
+  final VideoController videoController;
   final String url;
 
-  _ViewData({required this.channel, required this.controller, required this.url});
+  _ViewData({required this.channel, required this.player, required this.videoController, required this.url});
 }
 
 class _LayoutButton extends StatelessWidget {

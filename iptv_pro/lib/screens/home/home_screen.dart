@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Consumer2<AppProvider, MiniPlayerProvider>(
       builder: (context, provider, miniPlayer, _) {
-        final hasMiniPlayer = miniPlayer.visible && miniPlayer.controller != null;
+        final hasMiniPlayer = miniPlayer.visible && miniPlayer.videoController != null;
 
         if (isWide) {
           // Wide layout: sidebar | channels | (video if split mode)
@@ -110,32 +110,26 @@ class _HomeScreenState extends State<HomeScreen> {
   // === SPLIT-SCREEN VIDEO PANEL (right side on wide, top on mobile) ===
 
   Widget _buildSplitVideoPanel(MiniPlayerProvider miniPlayer, {required bool isWide}) {
-    final ctrl = miniPlayer.controller!;
     return Container(
       width: isWide ? 380 : null,
       color: Colors.black,
       child: Column(
         children: [
-          // Video area
           Expanded(
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (ctrl.value.isInitialized)
-                  Center(
-                    child: AspectRatio(
-                      aspectRatio: ctrl.value.aspectRatio,
-                      child: VideoPlayer(ctrl),
-                    ),
+                if (miniPlayer.videoController != null)
+                  Video(
+                    controller: miniPlayer.videoController!,
+                    controls: NoVideoControls,
                   )
                 else
                   const Center(child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2)),
-                // Overlay controls
                 Positioned(
                   top: 8, left: 8, right: 8,
                   child: Row(
                     children: [
-                      // LIVE badge
                       if (miniPlayer.isLive)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -147,10 +141,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ]),
                         ),
                       const Spacer(),
-                      // Fullscreen button
                       _miniControl(Icons.fullscreen, () {
-                        final ctrl = miniPlayer.takeController();
-                        if (ctrl != null) {
+                        final result = miniPlayer.takePlayerAndController();
+                        if (result != null) {
                           Navigator.of(context).push(MaterialPageRoute(
                             builder: (_) => PlayerScreen(
                               url: miniPlayer.url ?? '',
@@ -160,18 +153,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               streamId: miniPlayer.streamId,
                               channelList: miniPlayer.channelList,
                               currentChannelIndex: miniPlayer.channelIndex,
-                              existingController: ctrl,
+                              existingPlayer: result.$1,
+                              existingVideoController: result.$2,
                             ),
                           ));
                         }
                       }),
                       const SizedBox(width: 6),
-                      // Close button
                       _miniControl(Icons.close, () => miniPlayer.dismiss()),
                     ],
                   ),
                 ),
-                // Channel name at bottom
                 Positioned(
                   bottom: 0, left: 0, right: 0,
                   child: Container(
@@ -210,27 +202,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMobileSplitContent(AppProvider provider, MiniPlayerProvider miniPlayer) {
     final streams = _filterStreams(provider.currentStreams);
-    final ctrl = miniPlayer.controller;
 
     return Column(
       children: [
-        // Video area (top ~35%)
         Container(
           height: MediaQuery.of(context).size.height * 0.28,
           color: Colors.black,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (ctrl != null && ctrl.value.isInitialized)
-                Center(
-                  child: AspectRatio(
-                    aspectRatio: ctrl.value.aspectRatio,
-                    child: VideoPlayer(ctrl),
-                  ),
+              if (miniPlayer.videoController != null)
+                Video(
+                  controller: miniPlayer.videoController!,
+                  controls: NoVideoControls,
                 )
               else
                 const Center(child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2)),
-              // Top controls
               Positioned(
                 top: 4, left: 8, right: 8,
                 child: Row(
@@ -254,8 +241,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     _miniControl(Icons.fullscreen, () {
-                      final ctrl = miniPlayer.takeController();
-                      if (ctrl != null) {
+                      final result = miniPlayer.takePlayerAndController();
+                      if (result != null) {
                         Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) => PlayerScreen(
                             url: miniPlayer.url ?? '',
@@ -265,7 +252,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             streamId: miniPlayer.streamId,
                             channelList: miniPlayer.channelList,
                             currentChannelIndex: miniPlayer.channelIndex,
-                            existingController: ctrl,
+                            existingPlayer: result.$1,
+                            existingVideoController: result.$2,
                           ),
                         ));
                       }
@@ -606,7 +594,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final miniPlayer = context.read<MiniPlayerProvider>();
-    final isSplitMode = miniPlayer.visible && miniPlayer.controller != null;
+    final isSplitMode = miniPlayer.visible && miniPlayer.videoController != null;
 
     return GridView.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -651,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final miniPlayer = context.read<MiniPlayerProvider>();
 
     // If split-screen is active, switch channel in the split view
-    if (miniPlayer.visible && miniPlayer.controller != null) {
+    if (miniPlayer.visible && miniPlayer.videoController != null) {
       miniPlayer.switchChannel(
         url: url,
         title: stream.name,

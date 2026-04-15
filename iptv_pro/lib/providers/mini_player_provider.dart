@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../models/xtream_data.dart';
 
 class MiniPlayerProvider extends ChangeNotifier {
-  VideoPlayerController? _controller;
+  Player? _player;
+  VideoController? _videoController;
   String? _title;
   String? _url;
   String? _channelIcon;
@@ -13,7 +15,8 @@ class MiniPlayerProvider extends ChangeNotifier {
   int? _channelIndex;
   bool _visible = false;
 
-  VideoPlayerController? get controller => _controller;
+  Player? get player => _player;
+  VideoController? get videoController => _videoController;
   String? get title => _title;
   String? get url => _url;
   String? get channelIcon => _channelIcon;
@@ -24,7 +27,8 @@ class MiniPlayerProvider extends ChangeNotifier {
   bool get visible => _visible;
 
   void startMiniPlayer({
-    required VideoPlayerController controller,
+    required Player player,
+    required VideoController videoController,
     required String title,
     required String url,
     String? channelIcon,
@@ -33,8 +37,8 @@ class MiniPlayerProvider extends ChangeNotifier {
     List<LiveStream>? channelList,
     int? channelIndex,
   }) {
-    // Don't dispose old controller - it's the same one being transferred
-    _controller = controller;
+    _player = player;
+    _videoController = videoController;
     _title = title;
     _url = url;
     _channelIcon = channelIcon;
@@ -47,22 +51,25 @@ class MiniPlayerProvider extends ChangeNotifier {
   }
 
   void dismiss() {
-    _controller?.dispose();
-    _controller = null;
+    _player?.dispose();
+    _player = null;
+    _videoController = null;
     _visible = false;
     _title = null;
     _url = null;
     notifyListeners();
   }
 
-  /// Take ownership of the controller (for going back to full screen)
-  /// Returns the controller without disposing it
-  VideoPlayerController? takeController() {
-    final ctrl = _controller;
-    _controller = null;
+  /// Take ownership of the player (for going back to full screen)
+  (Player, VideoController)? takePlayerAndController() {
+    final p = _player;
+    final vc = _videoController;
+    if (p == null || vc == null) return null;
+    _player = null;
+    _videoController = null;
     _visible = false;
     notifyListeners();
-    return ctrl;
+    return (p, vc);
   }
 
   /// Switch to a different channel while in split-screen mode
@@ -74,9 +81,6 @@ class MiniPlayerProvider extends ChangeNotifier {
     List<LiveStream>? channelList,
     int? channelIndex,
   }) async {
-    // Dispose old controller
-    _controller?.dispose();
-    _controller = null;
     _title = title;
     _url = url;
     _channelIcon = channelIcon;
@@ -86,18 +90,13 @@ class MiniPlayerProvider extends ChangeNotifier {
     _channelIndex = channelIndex;
     notifyListeners();
 
-    // Create and init new controller
     try {
-      final ctrl = VideoPlayerController.networkUrl(
-        Uri.parse(url),
-        httpHeaders: const {'User-Agent': 'IPTV Pro/1.0'},
-      );
-      await ctrl.initialize();
-      ctrl.play();
-      _controller = ctrl;
-      notifyListeners();
+      if (_player == null) {
+        _player = Player();
+        _videoController = VideoController(_player!);
+      }
+      await _player!.open(Media(url));
     } catch (e) {
-      // If init fails, hide the player
       _visible = false;
       notifyListeners();
     }

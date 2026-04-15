@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../../config/theme.dart';
 import '../../providers/mini_player_provider.dart';
 import '../../providers/app_provider.dart';
@@ -224,11 +224,9 @@ class _MiniPlayerOverlayState extends State<_MiniPlayerOverlay> {
   Widget build(BuildContext context) {
     return Consumer<MiniPlayerProvider>(
       builder: (context, miniPlayer, _) {
-        if (!miniPlayer.visible || miniPlayer.controller == null) return const SizedBox();
+        if (!miniPlayer.visible || miniPlayer.videoController == null) return const SizedBox();
 
-        final ctrl = miniPlayer.controller!;
         final screenSize = MediaQuery.of(context).size;
-        // Mini player size: 200x120 (16:9-ish)
         const width = 200.0;
         const height = 120.0;
 
@@ -245,9 +243,8 @@ class _MiniPlayerOverlayState extends State<_MiniPlayerOverlay> {
               });
             },
             onTap: () {
-              // Go back to full screen player
-              final ctrl = miniPlayer.takeController();
-              if (ctrl != null) {
+              final result = miniPlayer.takePlayerAndController();
+              if (result != null) {
                 Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => PlayerScreen(
                     url: miniPlayer.url ?? '',
@@ -257,7 +254,8 @@ class _MiniPlayerOverlayState extends State<_MiniPlayerOverlay> {
                     streamId: miniPlayer.streamId,
                     channelList: miniPlayer.channelList,
                     currentChannelIndex: miniPlayer.channelIndex,
-                    existingController: ctrl,
+                    existingPlayer: result.$1,
+                    existingVideoController: result.$2,
                   ),
                 ));
               }
@@ -279,11 +277,10 @@ class _MiniPlayerOverlayState extends State<_MiniPlayerOverlay> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      if (ctrl.value.isInitialized)
-                        VideoPlayer(ctrl)
-                      else
-                        const Center(child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2)),
-                      // Title bar
+                      Video(
+                        controller: miniPlayer.videoController!,
+                        controls: NoVideoControls,
+                      ),
                       Positioned(
                         bottom: 0, left: 0, right: 0,
                         child: Container(
@@ -303,7 +300,6 @@ class _MiniPlayerOverlayState extends State<_MiniPlayerOverlay> {
                           ),
                         ),
                       ),
-                      // Close button
                       Positioned(
                         top: 4, right: 4,
                         child: GestureDetector(
@@ -315,7 +311,6 @@ class _MiniPlayerOverlayState extends State<_MiniPlayerOverlay> {
                           ),
                         ),
                       ),
-                      // Live badge
                       if (miniPlayer.isLive)
                         Positioned(
                           top: 4, left: 4,

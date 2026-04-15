@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../config/theme.dart';
@@ -18,11 +20,11 @@ class PlayerScreen extends StatefulWidget {
   final String? year;
   final String? duration;
   final String? rating;
-  // For navigating channels
   final List<LiveStream>? channelList;
   final int? currentChannelIndex;
   // For resuming from mini player
-  final VideoPlayerController? existingController;
+  final Player? existingPlayer;
+  final VideoController? existingVideoController;
 
   const PlayerScreen({
     super.key,
@@ -37,7 +39,8 @@ class PlayerScreen extends StatefulWidget {
     this.rating,
     this.channelList,
     this.currentChannelIndex,
-    this.existingController,
+    this.existingPlayer,
+    this.existingVideoController,
   });
 
   @override
@@ -45,27 +48,33 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  VideoPlayerController? _controller;
+  Player? _player;
+  VideoController? _videoController;
   bool _isError = false;
   String _errorMessage = '';
   bool _isInitializing = true;
   bool _isPlaying = false;
   bool _showControls = true;
   bool _showInfo = false;
-  bool _subtitlesEnabled = true;
   Duration _position = Duration.zero;
   Duration _totalDuration = Duration.zero;
   List<EpgEntry> _epgEntries = [];
   int _currentChannelIdx = 0;
   String _currentUrl = '';
   String _currentTitle = '';
-
   bool _transferToMiniOnPop = true;
+
+  // Subtitle state
+  List<SubtitleTrack> _subtitleTracks = [];
+  SubtitleTrack? _activeSubtitleTrack;
+  String _subtitleText = '';
+
+  final List<StreamSubscription> _subscriptions = [];
 
   @override
   void initState() {
     super.initState();
-    WakelockPlus.enable(); // Keep screen on during playback
+    WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -75,15 +84,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _currentUrl = widget.url;
     _currentTitle = widget.title;
     _currentChannelIdx = widget.currentChannelIndex ?? 0;
-    // Dismiss any existing mini player
     context.read<MiniPlayerProvider>().dismiss();
-    if (widget.existingController != null) {
-      // Resume from mini player
-      _controller = widget.existingController;
-      _controller!.addListener(_onUpdate);
-      _totalDuration = _controller!.value.duration;
-      _isInitializing = false;
-      _isPlaying = _controller!.value.isPlaying;
+
+    if (widget.existingPlayer != null && widget.existingVideoController != null) {
+      _player = widget.existingPlayer;
+      _videoController = widget.existingVideoController;
+      _setupListeners();
+      setState(() {
+        _isInitializing = false;
+        _isPlaying = _player!.state.playing;
+        _position = _player!.state.position;
+        _totalDuration = _player!.state.duration;
+        _subtitleTracks = _player!.state.tracks.subtitle;
+        _subtitleText = _player!.state.subtitle.first;
+      });
       _autoHideControls();
     } else {
       _initPlayer();
@@ -103,42 +117,66 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _initPlayer() async {
     try {
-      _controller = VideoPlayerController.networkUrl(
-        Uri.parse(_currentUrl),
-        httpHeaders: const {'User-Agent': 'IPTV Pro/1.0'},
-      );
-      await _controller!.initialize();
-      _controller!.play();
-      _controller!.addListener(_onUpdate);
-      _totalDuration = _controller!.value.duration;
-      setState(() {
-        _isInitializing = false;
-        _isPlaying = true;
-      });
-      _autoHideControls();
+      _player = Player();
+      _videoController = VideoController(_player!);
+      _setupListeners();
+      await _player!.open(Media(_currentUrl));
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _isPlaying = true;
+        });
+        _autoHideControls();
+      }
     } catch (e) {
-      setState(() {
-        _isError = true;
-        _errorMessage = e.toString();
-        _isInitializing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isError = true;
+          _errorMessage = e.toString();
+          _isInitializing = false;
+        });
+      }
     }
   }
 
-  void _onUpdate() {
-    if (!mounted || _controller == null) return;
-    final val = _controller!.value;
-    setState(() {
-      _isPlaying = val.isPlaying;
-      _position = val.position;
-      _totalDuration = val.duration;
-    });
-    if (val.hasError) {
-      setState(() {
-        _isError = true;
-        _errorMessage = val.errorDescription ?? 'Playback error';
-      });
-    }
+  void _setupListeners() {
+    if (_player == null) return;
+    _subscriptions.add(_player!.stream.playing.listen((playing) {
+      if (mounted) setState(() => _isPlaying = playing);
+    }));
+    _subscriptions.add(_player!.stream.position.listen((position) {
+      if (mounted) setState(() => _position = position);
+    }));
+    _subscriptions.add(_player!.stream.duration.listen((duration) {
+      if (mounted) setState(() => _totalDuration = duration);
+    }));
+    _subscriptions.add(_player!.stream.error.listen((error) {
+      if (mounted && error.isNotEmpty) {
+        setState(() {
+          _isError = true;
+          _errorMessage = error;
+        });
+      }
+    }));
+    _subscriptions.add(_player!.stream.tracks.listen((tracks) {
+      if (mounted) {
+        setState(() => _subtitleTracks = tracks.subtitle);
+        // Auto-enable first subtitle track if available and none selected
+        if (_activeSubtitleTrack == null && tracks.subtitle.length > 1) {
+          // First track is usually "no" (disabled), pick the second one
+          final firstReal = tracks.subtitle.where((t) => t.id != 'no' && t.id != 'auto').toList();
+          if (firstReal.isNotEmpty) {
+            _player!.setSubtitleTrack(firstReal.first);
+            setState(() => _activeSubtitleTrack = firstReal.first);
+          }
+        }
+      }
+    }));
+    _subscriptions.add(_player!.stream.subtitle.listen((subtitle) {
+      if (mounted) {
+        setState(() => _subtitleText = subtitle.first);
+      }
+    }));
   }
 
   void _autoHideControls() {
@@ -165,18 +203,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _togglePlayPause() {
-    if (_controller == null) return;
-    if (_controller!.value.isPlaying) {
-      _controller!.pause();
-    } else {
-      _controller!.play();
-    }
+    if (_player == null) return;
+    _player!.playOrPause();
   }
 
   void _seekRelative(int seconds) {
-    if (_controller == null) return;
+    if (_player == null) return;
     final newPos = _position + Duration(seconds: seconds);
-    _controller!.seekTo(newPos);
+    _player!.seek(newPos);
   }
 
   void _switchChannel(int delta) {
@@ -187,58 +221,111 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final ch = widget.channelList![newIdx];
     final provider = context.read<AppProvider>();
     final url = provider.buildLiveUrl(ch.streamId);
-    _controller?.removeListener(_onUpdate);
-    _controller?.dispose();
-    _controller = null;
     setState(() {
       _currentUrl = url;
       _currentTitle = ch.name;
-      _isInitializing = true;
       _isError = false;
       _epgEntries = [];
+      _subtitleTracks = [];
+      _activeSubtitleTrack = null;
+      _subtitleText = '';
     });
-    _initPlayer();
+    _player?.open(Media(url));
     _loadEpg(ch.streamId);
   }
 
-  String _selectedSubtitleLang = 'off';
-
   void _showSubtitlePicker() {
-    setState(() {
-      _subtitlesEnabled = !_subtitlesEnabled;
-      _selectedSubtitleLang = _subtitlesEnabled ? 'on' : 'off';
-    });
-    // Show brief feedback
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _subtitlesEnabled ? 'Subtitles ON - will display if available in the stream' : 'Subtitles OFF',
-          style: const TextStyle(fontSize: 13),
+    final tracks = _subtitleTracks.where((t) => t.id != 'auto').toList();
+    if (tracks.isEmpty) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No subtitle tracks found in this stream', style: TextStyle(fontSize: 13)),
+          duration: Duration(seconds: 2),
+          backgroundColor: AppColors.bgCard,
+          behavior: SnackBarBehavior.floating,
         ),
-        duration: const Duration(seconds: 2),
-        backgroundColor: AppColors.bgCard,
-        behavior: SnackBarBehavior.floating,
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bgDeep,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Subtitle Tracks', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+            ),
+            // "Off" option
+            ListTile(
+              leading: Icon(Icons.closed_caption_off, color: _activeSubtitleTrack == null ? AppColors.red : AppColors.whiteMuted),
+              title: Text('Off', style: TextStyle(color: _activeSubtitleTrack == null ? AppColors.red : Colors.white)),
+              trailing: _activeSubtitleTrack == null ? const Icon(Icons.check, color: AppColors.red) : null,
+              onTap: () {
+                _player?.setSubtitleTrack(SubtitleTrack.no());
+                setState(() {
+                  _activeSubtitleTrack = null;
+                  _subtitleText = '';
+                });
+                Navigator.pop(ctx);
+              },
+            ),
+            ...tracks.where((t) => t.id != 'no').map((track) {
+              final isActive = _activeSubtitleTrack?.id == track.id;
+              final label = track.title ?? track.language ?? 'Track ${track.id}';
+              return ListTile(
+                leading: Icon(Icons.closed_caption, color: isActive ? AppColors.red : AppColors.whiteMuted),
+                title: Text(label, style: TextStyle(color: isActive ? AppColors.red : Colors.white)),
+                subtitle: track.language != null && track.title != null
+                    ? Text(track.language!, style: const TextStyle(color: AppColors.whiteMuted, fontSize: 11))
+                    : null,
+                trailing: isActive ? const Icon(Icons.check, color: AppColors.red) : null,
+                onTap: () {
+                  _player?.setSubtitleTrack(track);
+                  setState(() => _activeSubtitleTrack = track);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
 
   void _retryPlay() {
-    _controller?.removeListener(_onUpdate);
-    _controller?.dispose();
-    _controller = null;
+    for (final sub in _subscriptions) {
+      sub.cancel();
+    }
+    _subscriptions.clear();
+    _player?.dispose();
+    _player = null;
+    _videoController = null;
     setState(() {
       _isInitializing = true;
       _isError = false;
+      _subtitleTracks = [];
+      _activeSubtitleTrack = null;
+      _subtitleText = '';
     });
     _initPlayer();
   }
 
   void _goBackWithMiniPlayer() {
-    if (_transferToMiniOnPop && _controller != null && _controller!.value.isInitialized && widget.isLive) {
-      _controller!.removeListener(_onUpdate);
+    if (_transferToMiniOnPop && _player != null && widget.isLive) {
+      // Cancel listeners but don't dispose - mini player takes ownership
+      for (final sub in _subscriptions) {
+        sub.cancel();
+      }
+      _subscriptions.clear();
       context.read<MiniPlayerProvider>().startMiniPlayer(
-        controller: _controller!,
+        player: _player!,
+        videoController: _videoController!,
         title: _currentTitle,
         url: _currentUrl,
         channelIcon: widget.channelIcon,
@@ -247,7 +334,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         channelList: widget.channelList,
         channelIndex: _currentChannelIdx,
       );
-      _controller = null; // Don't dispose - mini player owns it now
+      _player = null;
+      _videoController = null;
     }
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([
@@ -260,9 +348,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
-    WakelockPlus.disable(); // Allow screen to turn off again
-    _controller?.removeListener(_onUpdate);
-    _controller?.dispose();
+    WakelockPlus.disable();
+    for (final sub in _subscriptions) {
+      sub.cancel();
+    }
+    _subscriptions.clear();
+    _player?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -300,18 +391,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
           },
           onVerticalDragEnd: (details) {
             if (widget.isLive && details.primaryVelocity != null) {
-              if (details.primaryVelocity! < -100) _switchChannel(-1); // swipe up = next
-              if (details.primaryVelocity! > 100) _switchChannel(1); // swipe down = prev
+              if (details.primaryVelocity! < -100) _switchChannel(-1);
+              if (details.primaryVelocity! > 100) _switchChannel(1);
             }
           },
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Video
               _buildVideoLayer(),
-              // Controls overlay
               if (_showControls && !_isInitializing && !_isError) _buildControlsOverlay(),
-              // Info panel
               if (_showInfo) _buildInfoPanel(),
             ],
           ),
@@ -383,27 +471,34 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
       );
     }
-    if (_controller != null && _controller!.value.isInitialized) {
-      return Center(
-        child: AspectRatio(
-          aspectRatio: _controller!.value.aspectRatio,
-          child: Stack(
-            alignment: Alignment.bottomCenter,
-            children: [
-              VideoPlayer(_controller!),
-              // Always show ClosedCaption widget - it displays embedded captions when available
-              ClosedCaption(
-                text: _subtitlesEnabled ? _controller!.value.caption.text : null,
-                textStyle: const TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                  backgroundColor: Colors.black87,
-                  fontWeight: FontWeight.w500,
+    if (_videoController != null) {
+      return Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          Video(
+            controller: _videoController!,
+            controls: NoVideoControls,
+          ),
+          // Subtitle overlay
+          if (_subtitleText.isNotEmpty && _activeSubtitleTrack != null)
+            Positioned(
+              bottom: 60,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _subtitleText,
+                  style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+        ],
       );
     }
     return const SizedBox();
@@ -439,22 +534,37 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       Text(_currentTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
                       if (_epgEntries.isNotEmpty)
                         Text(
-                          _epgEntries.where((e) => e.isCurrentlyAiring).map((e) => e.title ?? '').join('') ?? '',
+                          _epgEntries.where((e) => e.isCurrentlyAiring).map((e) => e.title ?? '').join(''),
                           style: const TextStyle(color: AppColors.whiteDim, fontSize: 12),
                           maxLines: 1, overflow: TextOverflow.ellipsis,
                         ),
                     ],
                   ),
                 ),
-                // Subtitles button
-                IconButton(
-                  icon: Icon(
-                    _subtitlesEnabled ? Icons.closed_caption : Icons.closed_caption_off,
-                    color: _subtitlesEnabled ? AppColors.red : Colors.white,
-                  ),
-                  onPressed: _showSubtitlePicker,
+                // Subtitle track count badge
+                Stack(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _activeSubtitleTrack != null ? Icons.closed_caption : Icons.closed_caption_off,
+                        color: _activeSubtitleTrack != null ? AppColors.red : Colors.white,
+                      ),
+                      onPressed: _showSubtitlePicker,
+                    ),
+                    if (_subtitleTracks.where((t) => t.id != 'no' && t.id != 'auto').isNotEmpty)
+                      Positioned(
+                        top: 6, right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(color: AppColors.red, shape: BoxShape.circle),
+                          child: Text(
+                            '${_subtitleTracks.where((t) => t.id != 'no' && t.id != 'auto').length}',
+                            style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                // Info button
                 IconButton(
                   icon: const Icon(Icons.info_outline, color: Colors.white),
                   onPressed: _toggleInfo,
@@ -504,7 +614,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ),
         ),
 
-        // Bottom bar with progress
+        // Bottom bar
         Positioned(
           bottom: 0, left: 0, right: 0,
           child: Container(
@@ -512,9 +622,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.85), Colors.transparent]),
             ),
-            child: widget.isLive
-                ? _buildLiveBottomBar()
-                : _buildVodBottomBar(),
+            child: widget.isLive ? _buildLiveBottomBar() : _buildVodBottomBar(),
           ),
         ),
       ],
@@ -522,7 +630,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildLiveBottomBar() {
-    // Show channel number and EPG info
     final currentEpg = _epgEntries.where((e) => e.isCurrentlyAiring).toList();
     final nextEpg = _epgEntries.where((e) => !e.isCurrentlyAiring).toList();
 
@@ -560,7 +667,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Time labels
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -573,8 +679,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ],
         ),
         const SizedBox(height: 6),
-        // Seek bar
-        if (_controller != null)
+        if (_player != null)
           SliderTheme(
             data: SliderThemeData(
               trackHeight: 3,
@@ -590,7 +695,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   : 0.0,
               onChanged: (v) {
                 final newPos = Duration(milliseconds: (v * _totalDuration.inMilliseconds).toInt());
-                _controller!.seekTo(newPos);
+                _player!.seek(newPos);
               },
             ),
           ),
@@ -605,7 +710,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Positioned(
       bottom: 0, left: 0, right: 0,
       child: GestureDetector(
-        onTap: () {}, // absorb taps
+        onTap: () {},
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -617,7 +722,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
               Row(
                 children: [
                   if (widget.channelIcon != null && widget.channelIcon!.isNotEmpty)
@@ -652,15 +756,43 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   IconButton(icon: const Icon(Icons.close, color: AppColors.whiteMuted), onPressed: () => setState(() => _showInfo = false)),
                 ],
               ),
-
-              // Plot
               if (widget.plot != null && widget.plot!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Text(widget.plot!, style: const TextStyle(color: AppColors.whiteDim, fontSize: 13, height: 1.5), maxLines: 4, overflow: TextOverflow.ellipsis),
                 ),
-
-              // EPG info for live
+              // Subtitle tracks info
+              if (_subtitleTracks.where((t) => t.id != 'no' && t.id != 'auto').isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'SUBTITLE TRACKS (${_subtitleTracks.where((t) => t.id != 'no' && t.id != 'auto').length})',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.whiteMuted, letterSpacing: 1),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  children: _subtitleTracks.where((t) => t.id != 'no' && t.id != 'auto').map((t) {
+                    final isActive = _activeSubtitleTrack?.id == t.id;
+                    return GestureDetector(
+                      onTap: () {
+                        _player?.setSubtitleTrack(t);
+                        setState(() => _activeSubtitleTrack = t);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isActive ? AppColors.red : AppColors.bgCard,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          t.title ?? t.language ?? 'Track ${t.id}',
+                          style: TextStyle(fontSize: 11, color: isActive ? Colors.white : AppColors.whiteDim, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
               if (widget.isLive && _epgEntries.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 const Text('PROGRAM GUIDE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.whiteMuted, letterSpacing: 1)),
