@@ -28,13 +28,20 @@ class _MoviesScreenState extends State<MoviesScreen> {
     super.didChangeDependencies();
     if (!_loaded) {
       _loaded = true;
-      final provider = context.read<AppProvider>();
-      if (provider.vodCategories.isEmpty) {
-        provider.loadVodCategories();
-      }
-      if (provider.vodCategories.isNotEmpty && provider.currentVodStreams.isEmpty) {
-        provider.loadVodStreams(provider.vodCategories.first.categoryId);
-      }
+      _initMovies();
+    }
+  }
+
+  Future<void> _initMovies() async {
+    final provider = context.read<AppProvider>();
+    if (provider.vodCategories.isEmpty) {
+      await provider.loadVodCategories();
+    }
+    if (!mounted) return;
+    if (provider.vodCategories.isNotEmpty && provider.currentVodStreams.isEmpty && !provider.isLoadingVod) {
+      final firstCat = provider.vodCategories.first.categoryId;
+      setState(() => _selectedCategoryId = firstCat);
+      provider.loadVodStreams(firstCat);
     }
   }
 
@@ -185,10 +192,26 @@ class _MoviesScreenState extends State<MoviesScreen> {
                               Icon(_showFavorites ? Icons.bookmark_border : Icons.movie_outlined, size: 48, color: AppColors.whiteMuted),
                               const SizedBox(height: 8),
                               Text(
-                                _showFavorites ? 'No movies in your list yet\nLong press a movie to add it' : 'Select a category to browse movies',
+                                _showFavorites
+                                    ? 'No movies in your list yet\nLong press a movie to add it'
+                                    : provider.error != null
+                                        ? 'Error loading movies\n${provider.error}'
+                                        : 'Tap a category to browse movies',
                                 style: TextStyle(color: AppColors.whiteMuted),
                                 textAlign: TextAlign.center,
                               ),
+                              if (!_showFavorites && (provider.error != null || !provider.isLoadingVod)) ...[
+                                const SizedBox(height: 12),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    final catId = _selectedCategoryId ?? (provider.vodCategories.isNotEmpty ? provider.vodCategories.first.categoryId : null);
+                                    if (catId != null) provider.loadVodStreams(catId);
+                                  },
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Retry'),
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
+                                ),
+                              ],
                             ],
                           ),
                         )

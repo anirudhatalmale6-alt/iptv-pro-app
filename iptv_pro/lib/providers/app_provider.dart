@@ -154,31 +154,36 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> _autoLoadCategories() async {
+    // Load each category type independently - don't use Future.wait
+    // which would fail ALL if one fails
     try {
-      final results = await Future.wait([
-        _service.getLiveCategories(),
-        _service.getVodCategories(),
-        _service.getSeriesCategories(),
-      ]);
-      _liveCategories = results[0] as List<Category>;
-      _vodCategories = results[1] as List<Category>;
-      _seriesCategories = results[2] as List<Category>;
+      _liveCategories = await _service.getLiveCategories();
       notifyListeners();
-
-      // Auto-load first category for each section
       if (_liveCategories.isNotEmpty) {
         loadLiveStreams(_liveCategories.first.categoryId);
       }
+    } catch (e) {
+      debugPrint('Failed to load live categories: $e');
+    }
+
+    try {
+      _vodCategories = await _service.getVodCategories();
+      notifyListeners();
       if (_vodCategories.isNotEmpty) {
         loadVodStreams(_vodCategories.first.categoryId);
       }
+    } catch (e) {
+      debugPrint('Failed to load VOD categories: $e');
+    }
+
+    try {
+      _seriesCategories = await _service.getSeriesCategories();
+      notifyListeners();
       if (_seriesCategories.isNotEmpty) {
         loadSeries(_seriesCategories.first.categoryId);
       }
     } catch (e) {
-      loadLiveCategories();
-      loadVodCategories();
-      loadSeriesCategories();
+      debugPrint('Failed to load series categories: $e');
     }
   }
 

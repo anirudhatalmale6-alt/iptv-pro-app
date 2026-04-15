@@ -26,11 +26,19 @@ class XtreamService {
   String get _apiUrl => '$_baseUrl/player_api.php';
 
   Future<Map<String, dynamic>> _getJson(String url) async {
-    final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
-    if (response.statusCode == 200) {
-      return json.decode(response.body) as Map<String, dynamic>;
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final body = response.body.trim();
+        if (body.isEmpty || body == 'null' || body == 'false') {
+          throw Exception('Server returned empty response');
+        }
+        return json.decode(body) as Map<String, dynamic>;
+      }
+      throw Exception('HTTP ${response.statusCode}');
+    } on FormatException catch (e) {
+      throw Exception('Invalid JSON response: $e');
     }
-    throw Exception('HTTP ${response.statusCode}');
   }
 
   Future<List<dynamic>> _getList(String url, {Duration? timeout}) async {

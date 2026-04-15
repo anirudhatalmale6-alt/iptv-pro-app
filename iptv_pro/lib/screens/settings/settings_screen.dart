@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../config/theme.dart';
 import '../../providers/app_provider.dart';
 import '../login/login_screen.dart';
@@ -19,6 +21,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _defaultQuality = 'Auto';
   String _bufferSize = 'Medium (5s)';
   String _epgInterval = 'Every 8 hours';
+
+  // Connection diagnostic
+  bool _diagRunning = false;
+  final Map<String, _DiagResult> _diagResults = {};
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +129,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (provider.userInfo?.expDate != null)
             _buildInfoRow('Expires', _formatExpiry(provider.userInfo!.expDate!)),
           const SizedBox(height: 20),
+          _buildGroupTitle('CONNECTION DIAGNOSTICS'),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _diagRunning ? null : () => _runDiagnostics(provider),
+              icon: _diagRunning
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.network_check, size: 18),
+              label: Text(_diagRunning ? 'Testing...' : 'Run Connection Test'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._diagResults.entries.map((e) => _buildDiagRow(e.key, e.value)),
+          const SizedBox(height: 20),
           _buildGroupTitle('ACCOUNT'),
           const SizedBox(height: 8),
           SizedBox(
@@ -168,8 +190,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (provider.userInfo?.expDate != null)
             _buildInfoRow('Account Expires', _formatExpiry(provider.userInfo!.expDate!)),
           const SizedBox(height: 24),
+          _buildGroupTitle('CONNECTION DIAGNOSTICS'),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 250,
+            child: ElevatedButton.icon(
+              onPressed: _diagRunning ? null : () => _runDiagnostics(provider),
+              icon: _diagRunning
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.network_check, size: 18),
+              label: Text(_diagRunning ? 'Testing...' : 'Run Connection Test'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ..._diagResults.entries.map((e) => _buildDiagRow(e.key, e.value)),
+          const SizedBox(height: 24),
           _buildGroupTitle('APP INFO'),
-          _buildInfoRow('Version', '1.0.0'),
+          _buildInfoRow('Version', '3.6.0'),
           _buildInfoRow('Build', 'Android'),
           const SizedBox(height: 24),
           SizedBox(
@@ -272,6 +310,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildDiagRow(String name, _DiagResult result) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            result.success ? Icons.check_circle : Icons.error,
+            size: 16,
+            color: result.success ? Colors.green : AppColors.red,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  '${result.detail}${result.ms > 0 ? ' (${result.ms}ms)' : ''}',
+                  style: TextStyle(fontSize: 10, color: result.success ? AppColors.whiteDim : AppColors.red),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatExpiry(String timestamp) {
     try {
       final ts = int.parse(timestamp);
@@ -279,6 +345,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     } catch (_) {
       return timestamp;
+    }
+  }
+
+  Future<void> _runDiagnostics(AppProvider provider) async {
+    if (_diagRunning) return;
+    setState(() {
+      _diagRunning = true;
+      _diagResults.clear();
+    });
+
+    final service = provider.service;
+    final baseUrl = service.server.trim().startsWith('http') ? service.server.trim() : 'http://${service.server.trim()}';
+    final apiUrl = '$baseUrl/player_api.php';
+    final user = service.username;
+    final pass = service.password;
+
+    // Test 1: Auth
+    await _testEndpoint('Authentication', '$apiUrl?username=$user&password=$pass', isJson: true, checkAuth: true);
+
+    // Test 2: Live categories
+    await _testEndpoint('Live Categories', '$apiUrl?username=$user&password=$pass&action=get_live_categories', isList: true);
+
+    // Test 3: VOD categories
+    await _testEndpoint('VOD Categories', '$apiUrl?username=$user&password=$pass&action=get_vod_categories', isList: true);
+
+    // Test 4: Series categories
+    await _testEndpoint('Series Categories', '$apiUrl?username=$user&password=$pass&action=get_series_categories', isList: true);
+
+    // Test 5: Series data (first category)
+    if (_diagResults['Series Categories']?.success == true && _diagResults['Series Categories']!.count > 0) {
+      // Load a series with first available category
+      try {
+        final catResponse = await http.get(Uri.parse('$apiUrl?username=$user&password=$pass&action=get_series_categories')).timeout(const Duration(seconds: 30));
+        final cats = json.decode(catResponse.body) as List;
+        if (cats.isNotEmpty) {
+          final catId = cats.first['category_id'];
+          await _testEndpoint('Series Data (cat: $catId)', '$apiUrl?username=$user&password=$pass&action=get_series&category_id=$catId', isList: true);
+        }
+      } catch (_) {}
+    }
+
+    // Test 6: EPG (short)
+    await _testEndpoint('EPG (Short)', '$apiUrl?username=$user&password=$pass&action=get_short_epg&stream_id=1&limit=5', isJson: true, checkEpg: true);
+
+    setState(() => _diagRunning = false);
+  }
+
+  Future<void> _testEndpoint(String name, String url, {bool isJson = false, bool isList = false, bool checkAuth = false, bool checkEpg = false}) async {
+    try {
+      final stopwatch = Stopwatch()..start();
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+      stopwatch.stop();
+      final ms = stopwatch.elapsedMilliseconds;
+
+      if (response.statusCode != 200) {
+        setState(() => _diagResults[name] = _DiagResult(false, 'HTTP ${response.statusCode}', ms));
+        return;
+      }
+
+      final body = response.body.trim();
+      if (body.isEmpty || body == 'null' || body == 'false') {
+        setState(() => _diagResults[name] = _DiagResult(false, 'Empty response', ms));
+        return;
+      }
+
+      if (isList) {
+        final decoded = json.decode(body);
+        if (decoded is List) {
+          setState(() => _diagResults[name] = _DiagResult(true, '${decoded.length} items', ms, count: decoded.length));
+        } else {
+          setState(() => _diagResults[name] = _DiagResult(false, 'Not a list: ${decoded.runtimeType}', ms));
+        }
+      } else if (checkAuth) {
+        final data = json.decode(body) as Map<String, dynamic>;
+        final auth = data['user_info']?['auth'];
+        final status = data['user_info']?['status'];
+        final maxCons = data['user_info']?['max_connections'];
+        if (auth == 1 || auth == '1') {
+          setState(() => _diagResults[name] = _DiagResult(true, 'OK (status: $status, max_conn: $maxCons)', ms));
+        } else {
+          setState(() => _diagResults[name] = _DiagResult(false, 'Auth failed (auth=$auth)', ms));
+        }
+      } else if (checkEpg) {
+        final data = json.decode(body) as Map<String, dynamic>;
+        final listings = data['epg_listings'] as List? ?? [];
+        setState(() => _diagResults[name] = _DiagResult(true, '${listings.length} entries', ms, count: listings.length));
+      } else {
+        setState(() => _diagResults[name] = _DiagResult(true, '${body.length} bytes', ms));
+      }
+    } catch (e) {
+      setState(() => _diagResults[name] = _DiagResult(false, e.toString().length > 80 ? '${e.toString().substring(0, 80)}...' : e.toString(), 0));
     }
   }
 
@@ -306,4 +463,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+}
+
+class _DiagResult {
+  final bool success;
+  final String detail;
+  final int ms;
+  final int count;
+  _DiagResult(this.success, this.detail, this.ms, {this.count = 0});
 }

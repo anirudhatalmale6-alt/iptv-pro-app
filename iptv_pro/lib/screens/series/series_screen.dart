@@ -27,19 +27,29 @@ class _SeriesScreenState extends State<SeriesScreen> {
     super.didChangeDependencies();
     if (!_loaded) {
       _loaded = true;
-      final provider = context.read<AppProvider>();
-      if (provider.seriesCategories.isEmpty) {
-        provider.loadSeriesCategories().then((_) {
-          if (mounted && provider.seriesCategories.isNotEmpty && provider.currentSeries.isEmpty && !provider.isLoadingSeries) {
-            final firstCat = provider.seriesCategories.first.categoryId;
-            setState(() => _selectedCategoryId = firstCat);
-            provider.loadSeries(firstCat);
-          }
-        });
-      } else if (provider.currentSeries.isEmpty && !provider.isLoadingSeries) {
+      _initSeries();
+    }
+  }
+
+  Future<void> _initSeries() async {
+    final provider = context.read<AppProvider>();
+
+    // Wait for categories if they're being loaded by _autoLoadCategories
+    if (provider.seriesCategories.isEmpty) {
+      await provider.loadSeriesCategories();
+    }
+
+    if (!mounted) return;
+
+    if (provider.seriesCategories.isNotEmpty) {
+      // Only load if no data yet and not already loading
+      if (provider.currentSeries.isEmpty && !provider.isLoadingSeries) {
         final firstCat = provider.seriesCategories.first.categoryId;
         setState(() => _selectedCategoryId = firstCat);
-        provider.loadSeries(firstCat);
+        await provider.loadSeries(firstCat);
+      } else if (_selectedCategoryId == null && provider.selectedSeriesCategoryId != null) {
+        // Sync selected category with provider
+        setState(() => _selectedCategoryId = provider.selectedSeriesCategoryId);
       }
     }
   }
