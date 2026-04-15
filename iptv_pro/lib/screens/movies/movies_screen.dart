@@ -5,6 +5,7 @@ import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
 import '../player/player_screen.dart';
+import 'movie_detail_sheet.dart';
 
 class MoviesScreen extends StatefulWidget {
   const MoviesScreen({super.key});
@@ -140,7 +141,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                             final movie = movies[index];
                             return _MovieCard(
                               movie: movie,
-                              onTap: () => _playMovie(movie),
+                              onTap: () => MovieDetailSheet.show(context, movie, () => _playMovie(movie)),
                             );
                           },
                         ),
