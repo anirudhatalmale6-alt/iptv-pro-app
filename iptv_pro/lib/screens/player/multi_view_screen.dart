@@ -21,12 +21,16 @@ class MultiViewScreen extends StatefulWidget {
 
 class _MultiViewScreenState extends State<MultiViewScreen> {
   final List<_ViewData?> _views = [null, null, null, null];
-  int _layout = 2; // 2 or 4
+  int _layout = 2;
   int _focusedIndex = 0;
   bool _showChannelPicker = false;
   int _pickingForSlot = 0;
   String _pickerSearch = '';
   final _pickerSearchController = TextEditingController();
+  // For category browsing in picker
+  List<LiveStream> _pickerChannels = [];
+  String? _pickerCategoryId;
+  bool _pickerLoading = false;
 
   @override
   void initState() {
@@ -34,7 +38,7 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
-    // Dismiss mini player to free up connection slot
+    _pickerChannels = widget.channels;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MiniPlayerProvider>().dismiss();
     });
@@ -48,7 +52,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
   }
 
   void _startChannel(int slot, LiveStream channel) {
-    // Dispose existing view in slot
     _views[slot]?.controller.dispose();
 
     final provider = context.read<AppProvider>();
@@ -64,7 +67,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
       }
     }).catchError((e) {
       if (mounted) {
-        // Retry once after 2 seconds
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted && _views[slot] != null && !_views[slot]!.controller.value.isInitialized) {
             _views[slot]!.controller.initialize().then((_) {
@@ -93,8 +95,28 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
     });
   }
 
+  Future<void> _loadPickerCategory(String? categoryId) async {
+    setState(() {
+      _pickerCategoryId = categoryId;
+      _pickerLoading = true;
+    });
+    try {
+      final provider = context.read<AppProvider>();
+      final streams = await provider.service.getLiveStreams(categoryId: categoryId);
+      if (mounted) {
+        setState(() {
+          _pickerChannels = streams;
+          _pickerLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _pickerLoading = false);
+      }
+    }
+  }
+
   void _switchLayout(int count) {
-    // Dispose views beyond the new layout count
     if (count < _layout) {
       for (int i = count; i < 4; i++) {
         _views[i]?.controller.dispose();
@@ -126,8 +148,8 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
         isLive: true,
         channelIcon: ch.streamIcon,
         streamId: ch.streamId,
-        channelList: widget.channels,
-        currentChannelIndex: widget.channels.indexOf(ch),
+        channelList: _pickerChannels,
+        currentChannelIndex: _pickerChannels.indexOf(ch),
       ),
     ));
   }
@@ -151,7 +173,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
       body: Stack(
         children: [
           _buildGrid(),
-
           // Top controls
           Positioned(
             top: 0, left: 0, right: 0,
@@ -172,8 +193,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
               ),
             ),
           ),
-
-          // Channel picker overlay
           if (_showChannelPicker) _buildChannelPicker(),
         ],
       ),
@@ -182,11 +201,14 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
 
   Widget _buildChannelPicker() {
     final filtered = _pickerSearch.isEmpty
-        ? widget.channels
-        : widget.channels.where((c) => c.name.toLowerCase().contains(_pickerSearch.toLowerCase())).toList();
+        ? _pickerChannels
+        : _pickerChannels.where((c) => c.name.toLowerCase().contains(_pickerSearch.toLowerCase())).toList();
+
+    final provider = context.read<AppProvider>();
+    final categories = provider.liveCategories;
 
     return Container(
-      color: Colors.black.withOpacity(0.85),
+      color: Colors.black.withOpacity(0.92),
       child: Column(
         children: [
           SizedBox(height: MediaQuery.of(context).padding.top + 8),
@@ -205,8 +227,9 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
               ],
             ),
           ),
+          // Search bar
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: SizedBox(
               height: 36,
               child: TextField(
@@ -216,6 +239,15 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
                   hintText: 'Search channels...',
                   hintStyle: TextStyle(color: AppColors.whiteMuted, fontSize: 12),
                   prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.whiteMuted),
+                  suffixIcon: _pickerSearch.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 16, color: AppColors.whiteMuted),
+                          onPressed: () {
+                            _pickerSearchController.clear();
+                            setState(() => _pickerSearch = '');
+                          },
+                        )
+                      : null,
                   contentPadding: EdgeInsets.zero,
                   filled: true,
                   fillColor: AppColors.bgCard,
@@ -225,57 +257,91 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
               ),
             ),
           ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                childAspectRatio: 1.2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final ch = filtered[index];
-                // Check if already in a slot
-                final inSlot = _views.any((v) => v?.channel.streamId == ch.streamId);
-                return Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      _startChannel(_pickingForSlot, ch);
-                      setState(() => _showChannelPicker = false);
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: inSlot ? AppColors.red.withOpacity(0.2) : AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: inSlot ? AppColors.red : Colors.white10),
-                      ),
-                      padding: const EdgeInsets.all(6),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: ch.streamIcon != null && ch.streamIcon!.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: ch.streamIcon!,
-                                    fit: BoxFit.contain,
-                                    errorWidget: (_, __, ___) => const Icon(Icons.tv, color: AppColors.whiteMuted, size: 20),
-                                  )
-                                : const Icon(Icons.tv, color: AppColors.whiteMuted, size: 20),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(ch.name, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
-                              maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-                        ],
+          // Category chips
+          if (categories.isNotEmpty)
+            SizedBox(
+              height: 36,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final cat = categories[index];
+                  final isSelected = _pickerCategoryId == cat.categoryId;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: () => _loadPickerCategory(cat.categoryId),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.red : AppColors.bgCard,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: isSelected ? AppColors.red : Colors.white10),
+                        ),
+                        child: Text(cat.categoryName, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.whiteDim)),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
+          const SizedBox(height: 4),
+          // Channel grid
+          Expanded(
+            child: _pickerLoading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2))
+                : filtered.isEmpty
+                    ? Center(child: Text(_pickerSearch.isNotEmpty ? 'No channels match "$_pickerSearch"' : 'No channels', style: TextStyle(color: AppColors.whiteMuted)))
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(12),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 5,
+                          childAspectRatio: 1.2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final ch = filtered[index];
+                          final inSlot = _views.any((v) => v?.channel.streamId == ch.streamId);
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                _startChannel(_pickingForSlot, ch);
+                                setState(() => _showChannelPicker = false);
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: inSlot ? AppColors.red.withOpacity(0.2) : AppColors.bgCard,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: inSlot ? AppColors.red : Colors.white10),
+                                ),
+                                padding: const EdgeInsets.all(6),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: ch.streamIcon != null && ch.streamIcon!.isNotEmpty
+                                          ? CachedNetworkImage(
+                                              imageUrl: ch.streamIcon!,
+                                              fit: BoxFit.contain,
+                                              errorWidget: (_, __, ___) => const Icon(Icons.tv, color: AppColors.whiteMuted, size: 20),
+                                            )
+                                          : const Icon(Icons.tv, color: AppColors.whiteMuted, size: 20),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(ch.name, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white),
+                                        maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -324,7 +390,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
     final isFocused = index == _focusedIndex;
 
     if (view == null) {
-      // Empty slot - show add button
       return GestureDetector(
         onTap: () => _openChannelPicker(index),
         child: Container(
@@ -367,7 +432,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
               VideoPlayer(view.controller)
             else
               const Center(child: CircularProgressIndicator(color: AppColors.red, strokeWidth: 2)),
-            // Channel name overlay
             Positioned(
               bottom: 4, left: 6,
               child: Container(
@@ -376,7 +440,6 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
                 child: Text(view.channel.name, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600), maxLines: 1),
               ),
             ),
-            // Change channel button
             Positioned(
               bottom: 4, right: 4,
               child: GestureDetector(

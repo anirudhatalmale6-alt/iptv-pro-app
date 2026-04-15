@@ -34,9 +34,22 @@ class XtreamService {
   }
 
   Future<List<dynamic>> _getList(String url, {Duration? timeout}) async {
-    final response = await http.get(Uri.parse(url)).timeout(timeout ?? const Duration(seconds: 60));
+    final response = await http.get(Uri.parse(url)).timeout(timeout ?? const Duration(seconds: 90));
     if (response.statusCode == 200) {
-      return json.decode(response.body) as List<dynamic>;
+      final body = response.body.trim();
+      // Handle empty, null, false, or non-array responses from Xtream API
+      if (body.isEmpty || body == 'null' || body == 'false' || body == '""' || body == '[]') {
+        return [];
+      }
+      final decoded = json.decode(body);
+      if (decoded is List) {
+        return decoded;
+      }
+      // Some servers return an object instead of array
+      if (decoded is Map) {
+        return [];
+      }
+      return [];
     }
     throw Exception('HTTP ${response.statusCode}');
   }
@@ -77,7 +90,7 @@ class XtreamService {
   Future<List<VodStream>> getVodStreams({String? categoryId}) async {
     String url = '$_apiUrl?username=$_username&password=$_password&action=get_vod_streams';
     if (categoryId != null) url += '&category_id=$categoryId';
-    final data = await _getList(url, timeout: categoryId == null ? const Duration(seconds: 180) : null);
+    final data = await _getList(url, timeout: const Duration(seconds: 120));
     return data.map((e) => VodStream.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -89,7 +102,7 @@ class XtreamService {
   Future<List<SeriesItem>> getSeries({String? categoryId}) async {
     String url = '$_apiUrl?username=$_username&password=$_password&action=get_series';
     if (categoryId != null) url += '&category_id=$categoryId';
-    final data = await _getList(url, timeout: categoryId == null ? const Duration(seconds: 180) : null);
+    final data = await _getList(url, timeout: const Duration(seconds: 120));
     return data.map((e) => SeriesItem.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -100,7 +113,18 @@ class XtreamService {
 
   Future<List<EpgEntry>> getShortEpg(int streamId) async {
     try {
-      final data = await _getJson('$_apiUrl?username=$_username&password=$_password&action=get_short_epg&stream_id=$streamId&limit=4');
+      final data = await _getJson('$_apiUrl?username=$_username&password=$_password&action=get_short_epg&stream_id=$streamId&limit=10');
+      final listings = data['epg_listings'] as List<dynamic>? ?? [];
+      return listings.map((e) => EpgEntry.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Get EPG for all channels using the simple table endpoint
+  Future<List<EpgEntry>> getSimpleDataTable(int streamId) async {
+    try {
+      final data = await _getJson('$_apiUrl?username=$_username&password=$_password&action=get_simple_data_table&stream_id=$streamId');
       final listings = data['epg_listings'] as List<dynamic>? ?? [];
       return listings.map((e) => EpgEntry.fromJson(e as Map<String, dynamic>)).toList();
     } catch (e) {

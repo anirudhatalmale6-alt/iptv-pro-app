@@ -679,7 +679,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openMultiView(List<LiveStream> streams) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => MultiViewScreen(channels: streams.take(10).toList()),
+      builder: (_) => MultiViewScreen(channels: streams),
     ));
   }
 }

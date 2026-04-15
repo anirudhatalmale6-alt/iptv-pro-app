@@ -263,17 +263,19 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadVodStreams(String? categoryId) async {
     _selectedVodCategoryId = categoryId;
     _isLoadingVod = true;
+    _error = null;
     notifyListeners();
     try {
-      _currentVodStreams = await _service.getVodStreams(categoryId: categoryId);
+      final results = await _service.getVodStreams(categoryId: categoryId);
+      _currentVodStreams = results;
       if (categoryId == null) {
-        _allVodStreams = _currentVodStreams;
+        _allVodStreams = results;
       }
       _isLoadingVod = false;
       notifyListeners();
     } catch (e) {
       _isLoadingVod = false;
-      _error = 'Failed to load movies';
+      _error = 'Failed to load movies: $e';
       notifyListeners();
     }
   }
@@ -319,17 +321,19 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadSeries(String? categoryId) async {
     _selectedSeriesCategoryId = categoryId;
     _isLoadingSeries = true;
+    _error = null;
     notifyListeners();
     try {
-      _currentSeries = await _service.getSeries(categoryId: categoryId);
+      final results = await _service.getSeries(categoryId: categoryId);
+      _currentSeries = results;
       if (categoryId == null) {
-        _allSeries = _currentSeries;
+        _allSeries = results;
       }
       _isLoadingSeries = false;
       notifyListeners();
     } catch (e) {
       _isLoadingSeries = false;
-      _error = 'Failed to load series';
+      _error = 'Failed to load series: $e';
       notifyListeners();
     }
   }

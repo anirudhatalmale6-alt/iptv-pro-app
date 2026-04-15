@@ -410,27 +410,62 @@ class EpgEntry {
   }
 
   bool get isCurrentlyAiring {
+    // Try timestamps first (most reliable)
+    final startTs = int.tryParse(startTimestamp ?? '') ?? 0;
+    final stopTs = int.tryParse(stopTimestamp ?? '') ?? 0;
+    if (startTs > 0 && stopTs > 0) {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      return now >= startTs && now <= stopTs;
+    }
+    // Fallback to date strings
     if (start == null || end == null) return false;
     try {
       final now = DateTime.now();
-      final startDt = DateTime.parse(start!);
-      final endDt = DateTime.parse(end!);
+      // Try parsing as UTC (Xtream API often returns UTC times)
+      DateTime startDt = DateTime.tryParse(start!) ?? DateTime.tryParse('${start!}Z') ?? DateTime.parse(start!);
+      DateTime endDt = DateTime.tryParse(end!) ?? DateTime.tryParse('${end!}Z') ?? DateTime.parse(end!);
+      // If parsed as UTC, convert to local
+      if (startDt.isUtc) {
+        startDt = startDt.toLocal();
+        endDt = endDt.toLocal();
+      }
       return now.isAfter(startDt) && now.isBefore(endDt);
     } catch (_) {
-      // Fallback to timestamp
+      return false;
+    }
+  }
+
+  bool get isUpcoming {
+    final startTs = int.tryParse(startTimestamp ?? '') ?? 0;
+    if (startTs > 0) {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final startTs = int.tryParse(startTimestamp ?? '') ?? 0;
-      final stopTs = int.tryParse(stopTimestamp ?? '') ?? 0;
-      if (startTs == 0 && stopTs == 0) return false;
-      return now >= startTs && now <= stopTs;
+      return now < startTs;
+    }
+    if (start == null) return false;
+    try {
+      final now = DateTime.now();
+      DateTime startDt = DateTime.tryParse(start!) ?? DateTime.parse(start!);
+      if (startDt.isUtc) startDt = startDt.toLocal();
+      return now.isBefore(startDt);
+    } catch (_) {
+      return false;
     }
   }
 
   String get timeRange {
+    // Try timestamps first
+    final startTs = int.tryParse(startTimestamp ?? '') ?? 0;
+    final stopTs = int.tryParse(stopTimestamp ?? '') ?? 0;
+    if (startTs > 0 && stopTs > 0) {
+      final s = DateTime.fromMillisecondsSinceEpoch(startTs * 1000);
+      final e = DateTime.fromMillisecondsSinceEpoch(stopTs * 1000);
+      return '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')} - ${e.hour.toString().padLeft(2, '0')}:${e.minute.toString().padLeft(2, '0')}';
+    }
     try {
       if (start != null && end != null) {
-        final s = DateTime.parse(start!);
-        final e = DateTime.parse(end!);
+        DateTime s = DateTime.tryParse(start!) ?? DateTime.parse(start!);
+        DateTime e = DateTime.tryParse(end!) ?? DateTime.parse(end!);
+        if (s.isUtc) { s = s.toLocal(); e = e.toLocal(); }
         return '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')} - ${e.hour.toString().padLeft(2, '0')}:${e.minute.toString().padLeft(2, '0')}';
       }
     } catch (_) {}

@@ -28,13 +28,18 @@ class _SeriesScreenState extends State<SeriesScreen> {
     if (!_loaded) {
       _loaded = true;
       final provider = context.read<AppProvider>();
-      // Only load if not already loaded by auto-load
       if (provider.seriesCategories.isEmpty) {
-        provider.loadSeriesCategories();
-      }
-      // If categories exist but no series loaded yet, load first category
-      if (provider.seriesCategories.isNotEmpty && provider.currentSeries.isEmpty) {
-        provider.loadSeries(provider.seriesCategories.first.categoryId);
+        provider.loadSeriesCategories().then((_) {
+          if (mounted && provider.seriesCategories.isNotEmpty && provider.currentSeries.isEmpty && !provider.isLoadingSeries) {
+            final firstCat = provider.seriesCategories.first.categoryId;
+            setState(() => _selectedCategoryId = firstCat);
+            provider.loadSeries(firstCat);
+          }
+        });
+      } else if (provider.currentSeries.isEmpty && !provider.isLoadingSeries) {
+        final firstCat = provider.seriesCategories.first.categoryId;
+        setState(() => _selectedCategoryId = firstCat);
+        provider.loadSeries(firstCat);
       }
     }
   }
@@ -167,7 +172,16 @@ class _SeriesScreenState extends State<SeriesScreen> {
 
             Expanded(
               child: provider.isLoadingSeries && series.isEmpty
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.red))
+                  ? const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: AppColors.red),
+                          SizedBox(height: 12),
+                          Text('Loading series...', style: TextStyle(color: AppColors.whiteMuted, fontSize: 12)),
+                        ],
+                      ),
+                    )
                   : series.isEmpty
                       ? Center(
                           child: Column(
@@ -176,10 +190,26 @@ class _SeriesScreenState extends State<SeriesScreen> {
                               Icon(_showFavorites ? Icons.bookmark_border : Icons.tv, size: 48, color: AppColors.whiteMuted),
                               const SizedBox(height: 8),
                               Text(
-                                _showFavorites ? 'No series in your list yet\nLong press a series to add it' : 'Select a category to browse series',
+                                _showFavorites
+                                    ? 'No series in your list yet\nLong press a series to add it'
+                                    : provider.error != null
+                                        ? 'Error loading series\n${provider.error}'
+                                        : 'Tap a category to browse series',
                                 style: TextStyle(color: AppColors.whiteMuted),
                                 textAlign: TextAlign.center,
                               ),
+                              if (provider.error != null || (!provider.isLoadingSeries && !_showFavorites)) ...[
+                                const SizedBox(height: 12),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    final catId = _selectedCategoryId ?? (provider.seriesCategories.isNotEmpty ? provider.seriesCategories.first.categoryId : null);
+                                    if (catId != null) provider.loadSeries(catId);
+                                  },
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Retry'),
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
+                                ),
+                              ],
                             ],
                           ),
                         )

@@ -52,7 +52,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _isPlaying = false;
   bool _showControls = true;
   bool _showInfo = false;
-  bool _subtitlesEnabled = false;
+  bool _subtitlesEnabled = true;
   Duration _position = Duration.zero;
   Duration _totalDuration = Duration.zero;
   List<EpgEntry> _epgEntries = [];
@@ -204,81 +204,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
   String _selectedSubtitleLang = 'off';
 
   void _showSubtitlePicker() {
-    final languages = [
-      {'code': 'off', 'name': 'Off'},
-      {'code': 'eng', 'name': 'English'},
-      {'code': 'fra', 'name': 'French'},
-      {'code': 'ara', 'name': 'Arabic'},
-      {'code': 'spa', 'name': 'Spanish'},
-      {'code': 'deu', 'name': 'German'},
-      {'code': 'por', 'name': 'Portuguese'},
-      {'code': 'ita', 'name': 'Italian'},
-      {'code': 'tur', 'name': 'Turkish'},
-      {'code': 'rus', 'name': 'Russian'},
-      {'code': 'hin', 'name': 'Hindi'},
-      {'code': 'zho', 'name': 'Chinese'},
-      {'code': 'jpn', 'name': 'Japanese'},
-      {'code': 'kor', 'name': 'Korean'},
-      {'code': 'nld', 'name': 'Dutch'},
-      {'code': 'pol', 'name': 'Polish'},
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.bgDeep.withOpacity(0.95),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: Text('Subtitles / CC', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-              ),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: languages.length,
-                  itemBuilder: (context, index) {
-                    final lang = languages[index];
-                    final isSelected = _selectedSubtitleLang == lang['code'];
-                    return ListTile(
-                      dense: true,
-                      leading: Icon(
-                        isSelected ? Icons.check_circle : Icons.circle_outlined,
-                        color: isSelected ? AppColors.red : AppColors.whiteMuted,
-                        size: 20,
-                      ),
-                      title: Text(lang['name']!, style: TextStyle(
-                        color: isSelected ? Colors.white : AppColors.whiteDim,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                        fontSize: 14,
-                      )),
-                      onTap: () {
-                        setState(() {
-                          _selectedSubtitleLang = lang['code']!;
-                          _subtitlesEnabled = lang['code'] != 'off';
-                        });
-                        Navigator.pop(ctx);
-                      },
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Text(
-                  'Subtitles display when available in the stream. Select a language preference - captions will show if the stream includes them.',
-                  style: TextStyle(color: AppColors.whiteMuted, fontSize: 10),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+    setState(() {
+      _subtitlesEnabled = !_subtitlesEnabled;
+      _selectedSubtitleLang = _subtitlesEnabled ? 'on' : 'off';
+    });
+    // Show brief feedback
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _subtitlesEnabled ? 'Subtitles ON - will display if available in the stream' : 'Subtitles OFF',
+          style: const TextStyle(fontSize: 13),
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: AppColors.bgCard,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -450,15 +391,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
             alignment: Alignment.bottomCenter,
             children: [
               VideoPlayer(_controller!),
-              if (_subtitlesEnabled)
-                ClosedCaption(
-                  text: _controller!.value.caption.text,
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    backgroundColor: Colors.black54,
-                  ),
+              // Always show ClosedCaption widget - it displays embedded captions when available
+              ClosedCaption(
+                text: _subtitlesEnabled ? _controller!.value.caption.text : null,
+                textStyle: const TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                  backgroundColor: Colors.black87,
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
             ],
           ),
         ),
