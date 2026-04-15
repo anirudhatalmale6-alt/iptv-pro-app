@@ -1,0 +1,321 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../config/theme.dart';
+import '../../models/xtream_data.dart';
+import '../../providers/app_provider.dart';
+import '../player/player_screen.dart';
+
+class MoviesScreen extends StatefulWidget {
+  const MoviesScreen({super.key});
+
+  @override
+  State<MoviesScreen> createState() => _MoviesScreenState();
+}
+
+class _MoviesScreenState extends State<MoviesScreen> {
+  bool _loaded = false;
+  String? _selectedCategoryId;
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) {
+      _loaded = true;
+      final provider = context.read<AppProvider>();
+      provider.loadVodCategories();
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppProvider>(
+      builder: (context, provider, _) {
+        final movies = provider.currentVodStreams.where((m) {
+          if (_searchQuery.isEmpty) return true;
+          return m.name.toLowerCase().contains(_searchQuery.toLowerCase());
+        }).toList();
+
+        return Column(
+          children: [
+            // Header with search and category filter
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              color: AppColors.bgSurface,
+              child: Column(
+                children: [
+                  // Search bar
+                  SizedBox(
+                    height: 38,
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(color: AppColors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Search movies...',
+                        hintStyle: TextStyle(color: AppColors.whiteMuted, fontSize: 13),
+                        prefixIcon: const Icon(Icons.search, color: AppColors.whiteMuted, size: 18),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, color: AppColors.whiteMuted, size: 16),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: AppColors.bgCard,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Category chips
+                  SizedBox(
+                    height: 32,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: provider.vodCategories.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return _buildCategoryChip('All', _selectedCategoryId == null, () {
+                            setState(() => _selectedCategoryId = null);
+                            provider.loadVodStreams(null);
+                          });
+                        }
+                        final cat = provider.vodCategories[index - 1];
+                        return _buildCategoryChip(
+                          cat.categoryName,
+                          _selectedCategoryId == cat.categoryId,
+                          () {
+                            setState(() => _selectedCategoryId = cat.categoryId);
+                            provider.loadVodStreams(cat.categoryId);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Movie grid
+            Expanded(
+              child: provider.isLoading && movies.isEmpty
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.red))
+                  : movies.isEmpty && _selectedCategoryId != null
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.movie_outlined, size: 48, color: AppColors.whiteMuted),
+                              const SizedBox(height: 8),
+                              Text('Select a category to browse movies', style: TextStyle(color: AppColors.whiteMuted)),
+                            ],
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(16),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: _getColumnCount(context),
+                            childAspectRatio: 0.55,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          itemCount: movies.length,
+                          itemBuilder: (context, index) {
+                            final movie = movies[index];
+                            return _MovieCard(
+                              movie: movie,
+                              onTap: () => _playMovie(movie),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  int _getColumnCount(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width > 1200) return 8;
+    if (width > 900) return 6;
+    if (width > 600) return 4;
+    return 3;
+  }
+
+  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.red : AppColors.bgCard,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isSelected ? AppColors.red : Colors.white10),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : AppColors.whiteDim,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _playMovie(VodStream movie) {
+    final provider = context.read<AppProvider>();
+    final ext = movie.containerExtension ?? 'mp4';
+    final url = provider.buildVodUrl(movie.streamId, ext);
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => PlayerScreen(url: url, title: movie.name),
+    ));
+  }
+}
+
+class _MovieCard extends StatelessWidget {
+  final VodStream movie;
+  final VoidCallback onTap;
+
+  const _MovieCard({required this.movie, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Poster
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.bgCard,
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (movie.streamIcon != null && movie.streamIcon!.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: movie.streamIcon!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            color: AppColors.bgCard,
+                            child: const Center(child: Icon(Icons.movie, color: AppColors.whiteMuted)),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: AppColors.bgCard,
+                            child: const Center(child: Icon(Icons.movie, color: AppColors.whiteMuted)),
+                          ),
+                        ),
+                      )
+                    else
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          color: AppColors.bgCard,
+                          child: const Center(child: Icon(Icons.movie, color: AppColors.whiteMuted, size: 32)),
+                        ),
+                      ),
+                    // Gradient overlay
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(8),
+                            bottomRight: Radius.circular(8),
+                          ),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Rating badge
+                    if (movie.ratingValue > 0)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star, color: AppColors.gold, size: 10),
+                              const SizedBox(width: 2),
+                              Text(
+                                movie.ratingValue.toStringAsFixed(1),
+                                style: const TextStyle(color: AppColors.gold, fontSize: 9, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    // Quality badge
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.red,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: const Text('HD', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            // Title
+            Text(
+              movie.name,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
