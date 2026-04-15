@@ -20,6 +20,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
   String _searchQuery = '';
   final _searchController = TextEditingController();
   bool _showFavorites = false;
+  List<VodStream> _searchResults = [];
+  bool _isSearching = false;
 
   @override
   void didChangeDependencies() {
@@ -37,18 +39,41 @@ class _MoviesScreenState extends State<MoviesScreen> {
     super.dispose();
   }
 
+  void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query);
+    if (query.length >= 2) {
+      _performSearch(query);
+    } else {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+    }
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() => _isSearching = true);
+    final provider = context.read<AppProvider>();
+    final results = await provider.searchVodStreams(query);
+    if (mounted && _searchQuery == query) {
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         List<VodStream> movies;
-        if (_showFavorites) {
+        if (_searchQuery.length >= 2) {
+          movies = _searchResults;
+        } else if (_showFavorites) {
           movies = provider.currentVodStreams.where((m) => provider.isMovieFavorite(m.streamId)).toList();
         } else {
           movies = provider.currentVodStreams;
-        }
-        if (_searchQuery.isNotEmpty) {
-          movies = movies.where((m) => m.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         }
 
         return Column(
@@ -74,7 +99,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                                 icon: const Icon(Icons.clear, color: AppColors.whiteMuted, size: 16),
                                 onPressed: () {
                                   _searchController.clear();
-                                  setState(() => _searchQuery = '');
+                                  _onSearchChanged('');
                                 },
                               )
                             : null,
@@ -86,7 +111,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      onChanged: (v) => setState(() => _searchQuery = v),
+                      onChanged: _onSearchChanged,
                     ),
                   ),
                   const SizedBox(height: 10),

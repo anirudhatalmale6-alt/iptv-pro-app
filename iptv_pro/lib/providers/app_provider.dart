@@ -160,9 +160,15 @@ class AppProvider extends ChangeNotifier {
       _seriesCategories = results[2] as List<Category>;
       notifyListeners();
 
-      // Auto-load first live category
+      // Auto-load first category for each section
       if (_liveCategories.isNotEmpty) {
         loadLiveStreams(_liveCategories.first.categoryId);
+      }
+      if (_vodCategories.isNotEmpty) {
+        loadVodStreams(_vodCategories.first.categoryId);
+      }
+      if (_seriesCategories.isNotEmpty) {
+        loadSeries(_seriesCategories.first.categoryId);
       }
     } catch (e) {
       // Individual loads as fallback
@@ -208,6 +214,7 @@ class AppProvider extends ChangeNotifier {
 
   // All live streams cache for favorites/search
   List<LiveStream> _allLiveStreams = [];
+  List<LiveStream> get allLiveStreams => _allLiveStreams;
 
   Future<void> loadLiveStreams(String? categoryId) async {
     _selectedLiveCategoryId = categoryId;
@@ -245,12 +252,20 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  // All VOD streams cache for search/favorites
+  List<VodStream> _allVodStreams = [];
+  List<VodStream> get allVodStreams => _allVodStreams;
+
   Future<void> loadVodStreams(String? categoryId) async {
     _selectedVodCategoryId = categoryId;
     _isLoading = true;
     notifyListeners();
     try {
       _currentVodStreams = await _service.getVodStreams(categoryId: categoryId);
+      // Cache all streams when loading without category
+      if (categoryId == null) {
+        _allVodStreams = _currentVodStreams;
+      }
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -258,6 +273,13 @@ class AppProvider extends ChangeNotifier {
       _error = 'Failed to load movies';
       notifyListeners();
     }
+  }
+
+  Future<List<VodStream>> searchVodStreams(String query) async {
+    if (_allVodStreams.isEmpty) {
+      _allVodStreams = await _service.getVodStreams();
+    }
+    return _allVodStreams.where((m) => m.name.toLowerCase().contains(query.toLowerCase())).toList();
   }
 
   Future<void> loadSeriesCategories() async {
@@ -269,12 +291,19 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  // All series cache for search/favorites
+  List<SeriesItem> _allSeries = [];
+  List<SeriesItem> get allSeries => _allSeries;
+
   Future<void> loadSeries(String? categoryId) async {
     _selectedSeriesCategoryId = categoryId;
     _isLoading = true;
     notifyListeners();
     try {
       _currentSeries = await _service.getSeries(categoryId: categoryId);
+      if (categoryId == null) {
+        _allSeries = _currentSeries;
+      }
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -282,6 +311,13 @@ class AppProvider extends ChangeNotifier {
       _error = 'Failed to load series';
       notifyListeners();
     }
+  }
+
+  Future<List<SeriesItem>> searchSeries(String query) async {
+    if (_allSeries.isEmpty) {
+      _allSeries = await _service.getSeries();
+    }
+    return _allSeries.where((s) => s.name.toLowerCase().contains(query.toLowerCase())).toList();
   }
 
   Future<SeriesInfo> getSeriesInfo(int seriesId) async {

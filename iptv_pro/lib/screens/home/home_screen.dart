@@ -20,6 +20,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showSearch = false;
   String _searchQuery = '';
   final _searchController = TextEditingController();
+  List<LiveStream> _searchResults = [];
+  bool _isSearching = false;
 
   @override
   void didChangeDependencies() {
@@ -40,6 +42,35 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query);
+    if (query.length >= 2) {
+      _performSearch(query);
+    } else {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+    }
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() => _isSearching = true);
+    final provider = context.read<AppProvider>();
+    // Search across all live streams
+    if (provider.allLiveStreams.isEmpty) {
+      await provider.loadLiveStreams(null); // Load all streams
+    }
+    final allStreams = provider.allLiveStreams.isNotEmpty ? provider.allLiveStreams : provider.currentStreams;
+    final results = allStreams.where((s) => s.name.toLowerCase().contains(query.toLowerCase())).toList();
+    if (mounted && _searchQuery == query) {
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+    }
   }
 
   @override
@@ -86,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   fillColor: AppColors.bgCard,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
                 ),
-                onChanged: (v) => setState(() => _searchQuery = v),
+                onChanged: _onSearchChanged,
               ),
             ),
           ),
@@ -210,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fillColor: AppColors.bgCard,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                     ),
-                    onChanged: (v) => setState(() => _searchQuery = v),
+                    onChanged: _onSearchChanged,
                   ),
                 ),
               ),
@@ -270,8 +301,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<LiveStream> _filterStreams(List<LiveStream> streams) {
-    if (_searchQuery.isEmpty) return streams;
-    return streams.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    if (_searchQuery.length >= 2) return _searchResults;
+    return streams;
   }
 
   Widget _buildFeaturedArea(AppProvider provider, LiveStream stream) {

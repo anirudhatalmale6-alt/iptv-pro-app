@@ -19,6 +19,8 @@ class _SeriesScreenState extends State<SeriesScreen> {
   String _searchQuery = '';
   final _searchController = TextEditingController();
   bool _showFavorites = false;
+  List<SeriesItem> _searchResults = [];
+  bool _isSearching = false;
 
   @override
   void didChangeDependencies() {
@@ -35,18 +37,41 @@ class _SeriesScreenState extends State<SeriesScreen> {
     super.dispose();
   }
 
+  void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query);
+    if (query.length >= 2) {
+      _performSearch(query);
+    } else {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+    }
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() => _isSearching = true);
+    final provider = context.read<AppProvider>();
+    final results = await provider.searchSeries(query);
+    if (mounted && _searchQuery == query) {
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         List<SeriesItem> series;
-        if (_showFavorites) {
+        if (_searchQuery.length >= 2) {
+          series = _searchResults;
+        } else if (_showFavorites) {
           series = provider.currentSeries.where((s) => provider.isSeriesFavorite(s.seriesId)).toList();
         } else {
           series = provider.currentSeries.toList();
-        }
-        if (_searchQuery.isNotEmpty) {
-          series = series.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         }
 
         return Column(
@@ -71,7 +96,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
                                 icon: const Icon(Icons.clear, size: 16, color: AppColors.whiteMuted),
                                 onPressed: () {
                                   _searchController.clear();
-                                  setState(() => _searchQuery = '');
+                                  _onSearchChanged('');
                                 },
                               )
                             : null,
@@ -80,7 +105,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                       ),
-                      onChanged: (v) => setState(() => _searchQuery = v),
+                      onChanged: _onSearchChanged,
                     ),
                   ),
                   const SizedBox(height: 10),
