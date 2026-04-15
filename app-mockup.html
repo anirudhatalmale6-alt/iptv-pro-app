@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280, height=720, initial-scale=1">
+<title>IPTV Pro — App Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #0a0a14;
+  --bg-surface: #12121f;
+  --bg-card: #1a1a2e;
+  --bg-card-hover: #222240;
+  --bg-sidebar: #0e0e1a;
+  --red: #e63946;
+  --red-glow: #e6394680;
+  --red-soft: #ff4d5a;
+  --red-dark: #b82d38;
+  --white: #f0f0f5;
+  --white-dim: #a0a0b8;
+  --white-muted: #6a6a80;
+  --accent-gold: #ffd166;
+  --green: #06d6a0;
+  --blue: #118ab2;
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Be Vietnam Pro', sans-serif;
+  --radius: 8px;
+  --radius-lg: 14px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--white);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NOISE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── TOP NAV BAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 28px;
+  background: linear-gradient(180deg, rgba(10,10,20,0.98) 0%, rgba(10,10,20,0.85) 100%);
+  border-bottom: 1px solid rgba(230,57,70,0.15);
+  position: relative;
+  z-index: 100;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: -0.5px;
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 40px;
+}
+
+.logo .icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 0 20px var(--red-glow);
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-tab {
+  padding: 8px 20px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--white-muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: var(--transition);
+  position: relative;
+  user-select: none;
+}
+
+.nav-tab:hover {
+  color: var(--white-dim);
+  background: rgba(255,255,255,0.04);
+}
+
+.nav-tab.active {
+  color: var(--white);
+  background: rgba(230,57,70,0.15);
+}
+
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--red);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--red-glow);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.badge-stat {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--white-dim);
+  background: rgba(255,255,255,0.06);
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.badge-stat span {
+  color: var(--red-soft);
+  font-weight: 700;
+}
+
+.clock {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--white);
+  letter-spacing: 1px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--red) 0%, #ff6b7a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(230,57,70,0.3);
+}
+
+/* ── SCREEN CONTAINER ── */
+.screen {
+  display: none;
+  height: calc(720px - 56px);
+  overflow: hidden;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* ══════════════════════════════════════
+   HOME SCREEN
+   ══════════════════════════════════════ */
+.home-screen {
+  flex-direction: row;
+}
+
+.sidebar {
+  width: 220px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid rgba(255,255,255,0.04);
+  padding: 16px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--white-muted);
+  padding: 8px 20px;
+  margin-bottom: 4px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--white-dim);
+  border-left: 3px solid transparent;
+}
+
+.sidebar-item:hover {
+  background: rgba(255,255,255,0.03);
+  color: var(--white);
+}
+
+.sidebar-item.active {
+  background: linear-gradient(90deg, rgba(230,57,70,0.15) 0%, transparent 100%);
+  border-left-color: var(--red);
+  color: var(--white);
+}
+
+.sidebar-item .emoji {
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+}
+
+.sidebar-item .count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--white-muted);
+  background: rgba(255,255,255,0.06);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.home-main {
+  flex: 1;
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Player preview */
+.player-hero {
+  display: flex;
+  gap: 20px;
+  min-height: 240px;
+}
+
+.player-preview {
+  flex: 1.6;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(230,57,70,0.08) 0%, transparent 70%);
+}
+
+.player-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+}
+
+.player-channel-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.player-program {
+  font-size: 12px;
+  color: var(--white-dim);
+}
+
+.player-live-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: var(--red);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 0 16px var(--red-glow);
+  animation: livePulse 2s infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 16px var(--red-glow); }
+  50% { box-shadow: 0 0 28px rgba(230,57,70,0.6); }
+}
+
+.player-live-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  animation: dotBlink 1s infinite;
+}
+
+@keyframes dotBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.player-center-icon {
+  font-size: 48px;
+  opacity: 0.3;
+  z-index: 1;
+}
+
+.player-quality {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: var(--accent-gold);
+}
+
+/* Now playing sidebar */
+.now-playing {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.now-playing-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--white-muted);
+  margin-bottom: 4px;
+}
+
+.np-channel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+
+.np-channel:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(230,57,70,0.2);
+}
+
+.np-channel.active {
+  border-color: var(--red);
+  background: rgba(230,57,70,0.08);
+}
+
+.np-ch-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: white;
+  flex-shrink: 0;
+}
+
+.np-ch-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.np-ch-name {
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-ch-show {
+  font-size: 10px;
+  color: var(--white-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-ch-time {
+  font-size: 10px;
+  color: var(--white-muted);
+  flex-shrink: 0;
+}
+
+/* Channel grid */
+.channel-section-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.channel-section-title .line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+}
+
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+.channel-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid transparent;
+  text-align: center;
+}
+
+.channel-card:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(230,57,70,0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.channel-card:first-child {
+  border-color: var(--red);
+  background: rgba(230,57,70,0.06);
+  box-shadow: 0 0 20px rgba(230,57,70,0.1);
+}
+
+.ch-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 900;
+  color: white;
+}
+
+.ch-name {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.ch-program {
+  font-size: 9px;
+  color: var(--white-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* ══════════════════════════════════════
+   EPG SCREEN
+   ══════════════════════════════════════ */
+.epg-screen {
+  flex-direction: column;
+}
+
+.epg-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  gap: 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.epg-date {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.epg-nav-btn {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--white);
+  padding: 5px 14px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.epg-now-btn {
+  background: var(--red);
+  border: none;
+  color: white;
+  padding: 5px 14px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 12px var(--red-glow);
+}
+
+.epg-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.epg-grid {
+  display: grid;
+  grid-template-columns: 200px repeat(12, 150px);
+  min-width: max-content;
+}
+
+.epg-time-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: contents;
+}
+
+.epg-time-cell {
+  padding: 10px 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--white-dim);
+  background: var(--bg-surface);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-right: 1px solid rgba(255,255,255,0.03);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.epg-time-cell:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: var(--bg-surface);
+}
+
+.epg-row {
+  display: contents;
+}
+
+.epg-channel-cell {
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-right: 1px solid rgba(255,255,255,0.04);
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+.epg-ch-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: white;
+  flex-shrink: 0;
+}
+
+.epg-ch-name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.epg-program-cell {
+  padding: 6px 8px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  border-right: 1px solid rgba(255,255,255,0.02);
+  display: flex;
+  align-items: center;
+}
+
+.epg-program {
+  background: var(--bg-card);
+  border-radius: 6px;
+  padding: 6px 10px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid transparent;
+  overflow: hidden;
+}
+
+.epg-program:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(230,57,70,0.2);
+}
+
+.epg-program.now {
+  border-color: var(--red);
+  background: rgba(230,57,70,0.08);
+}
+
+.epg-program.now::before {
+  content: 'NOW';
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--red);
+  letter-spacing: 1px;
+}
+
+.epg-program-name {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.epg-program-time {
+  font-size: 9px;
+  color: var(--white-muted);
+}
+
+/* Now indicator line */
+.epg-now-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--red);
+  left: 500px;
+  z-index: 15;
+  box-shadow: 0 0 10px var(--red-glow);
+}
+
+.epg-now-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  background: var(--red);
+  border-radius: 50%;
+}
+
+/* ══════════════════════════════════════
+   MOVIES SCREEN
+   ══════════════════════════════════════ */
+.movies-screen {
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px 28px;
+  gap: 24px;
+}
+
+.movies-hero {
+  display: flex;
+  gap: 20px;
+  min-height: 220px;
+}
+
+.featured-movie {
+  flex: 2;
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.featured-movie-bg {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a0a0e 0%, #2d1520 40%, #1a1a2e 100%);
+  position: relative;
+}
+
+.featured-movie-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,0.7) 0%, transparent 60%);
+}
+
+.featured-movie-info {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 40%;
+  z-index: 2;
+}
+
+.featured-tag {
+  display: inline-block;
+  background: var(--red);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.featured-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 24px;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.featured-meta {
+  font-size: 11px;
+  color: var(--white-dim);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.featured-meta .star { color: var(--accent-gold); }
+
+.featured-play-btn {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--red);
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 8px 20px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px var(--red-glow);
+}
+
+.featured-movie-poster {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100px;
+  height: 140px;
+  background: linear-gradient(135deg, #3d1525, #5a2040);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.side-picks {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.side-pick {
+  flex: 1;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+
+.side-pick:hover {
+  border-color: rgba(230,57,70,0.2);
+  background: var(--bg-card-hover);
+}
+
+.side-pick-poster {
+  width: 50px;
+  height: 65px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.side-pick-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.side-pick-title {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.side-pick-meta {
+  font-size: 10px;
+  color: var(--white-muted);
+}
+
+.side-pick-rating {
+  font-size: 10px;
+  color: var(--accent-gold);
+}
+
+/* Movie rows */
+.movie-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.movie-row-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.movie-row-see-all {
+  font-size: 11px;
+  color: var(--red-soft);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.movie-row {
+  display: flex;
+  gap: 14px;
+  overflow-x: hidden;
+  padding: 4px 0;
+}
+
+.movie-card {
+  width: 130px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.movie-card:hover {
+  transform: translateY(-4px);
+}
+
+.movie-poster {
+  width: 130px;
+  height: 185px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.movie-poster::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(0,0,0,0.5) 0%, transparent 50%);
+}
+
+.movie-poster .rating-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.7);
+  color: var(--accent-gold);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.movie-poster .quality-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: var(--red);
+  color: white;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 3px;
+  z-index: 2;
+}
+
+.movie-title {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.movie-year {
+  font-size: 10px;
+  color: var(--white-muted);
+}
+
+/* ══════════════════════════════════════
+   SERIES SCREEN
+   ══════════════════════════════════════ */
+.series-screen {
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px 28px;
+  gap: 24px;
+}
+
+.series-hero-banner {
+  height: 200px;
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0f1923 0%, #1a1a2e 50%, #1e0a14 100%);
+}
+
+.series-hero-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 70% 30%, rgba(230,57,70,0.12) 0%, transparent 60%);
+}
+
+.series-hero-content {
+  position: absolute;
+  bottom: 20px;
+  left: 24px;
+  z-index: 2;
+}
+
+.series-hero-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--red);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.series-hero-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+
+.series-hero-meta {
+  font-size: 12px;
+  color: var(--white-dim);
+  display: flex;
+  gap: 14px;
+}
+
+.series-hero-poster {
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 72px;
+  opacity: 0.15;
+}
+
+.series-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.series-filter {
+  padding: 6px 16px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--white-dim);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.series-filter.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+}
+
+.series-filter:hover:not(.active) {
+  border-color: rgba(230,57,70,0.3);
+}
+
+.series-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 14px;
+}
+
+.series-card {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.series-card:hover {
+  transform: translateY(-4px);
+}
+
+.series-poster {
+  width: 100%;
+  aspect-ratio: 2/3;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.series-poster .season-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  background: rgba(0,0,0,0.8);
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.series-title {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.series-meta {
+  font-size: 10px;
+  color: var(--white-muted);
+}
+
+/* ══════════════════════════════════════
+   SETTINGS SCREEN
+   ══════════════════════════════════════ */
+.settings-screen {
+  flex-direction: row;
+  background: var(--bg-deep);
+}
+
+.settings-nav {
+  width: 240px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid rgba(255,255,255,0.04);
+  padding: 20px 0;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--white-dim);
+  cursor: pointer;
+  transition: var(--transition);
+  border-left: 3px solid transparent;
+}
+
+.settings-nav-item:hover {
+  background: rgba(255,255,255,0.03);
+  color: var(--white);
+}
+
+.settings-nav-item.active {
+  background: linear-gradient(90deg, rgba(230,57,70,0.15) 0%, transparent 100%);
+  border-left-color: var(--red);
+  color: var(--white);
+}
+
+.settings-nav-item .s-icon { font-size: 16px; width: 24px; text-align: center; }
+
+.settings-content {
+  flex: 1;
+  padding: 24px 32px;
+  overflow-y: auto;
+}
+
+.settings-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  margin-bottom: 24px;
+}
+
+.settings-group {
+  margin-bottom: 24px;
+}
+
+.settings-group-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--white-muted);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+}
+
+.setting-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.setting-desc {
+  font-size: 11px;
+  color: var(--white-muted);
+  margin-top: 2px;
+}
+
+.toggle {
+  width: 42px;
+  height: 22px;
+  background: var(--bg-card);
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.toggle.on {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.toggle::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  transition: var(--transition);
+}
+
+.toggle.on::after {
+  left: 22px;
+}
+
+.setting-select {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--white);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-family: var(--font-body);
+}
+
+.setting-value {
+  font-size: 12px;
+  color: var(--red-soft);
+  font-weight: 600;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.screen.active > * {
+  animation: fadeSlideUp 0.35s ease-out both;
+}
+
+.screen.active > *:nth-child(2) { animation-delay: 0.05s; }
+.screen.active > *:nth-child(3) { animation-delay: 0.1s; }
+.screen.active > *:nth-child(4) { animation-delay: 0.15s; }
+</style>
+</head>
+<body>
+
+<!-- ═══ TOP BAR ═══ -->
+<div class="topbar">
+  <div class="logo">
+    <div class="icon">▶</div>
+    IPTV Pro
+  </div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-screen="home">Home</div>
+    <div class="nav-tab" data-screen="epg">TV Guide</div>
+    <div class="nav-tab" data-screen="movies">Movies</div>
+    <div class="nav-tab" data-screen="series">Series</div>
+    <div class="nav-tab" data-screen="settings">Settings</div>
+  </div>
+  <div class="topbar-right">
+    <div class="badge-stat"><span>50K+</span> Live</div>
+    <div class="badge-stat"><span>160K+</span> Movies</div>
+    <div class="badge-stat"><span>70K+</span> Series</div>
+    <div class="clock" id="clock">21:45</div>
+    <div class="user-avatar">U</div>
+  </div>
+</div>
+
+<!-- ═══ HOME SCREEN ═══ -->
+<div class="screen home-screen active" id="screen-home">
+  <div class="sidebar">
+    <div class="sidebar-title">Categories</div>
+    <div class="sidebar-item active"><span class="emoji">⭐</span> Favorites <span class="count">24</span></div>
+    <div class="sidebar-item"><span class="emoji">📺</span> All Channels <span class="count">50K+</span></div>
+    <div class="sidebar-item"><span class="emoji">🇺🇸</span> USA <span class="count">8,420</span></div>
+    <div class="sidebar-item"><span class="emoji">🇬🇧</span> United Kingdom <span class="count">3,150</span></div>
+    <div class="sidebar-item"><span class="emoji">🇩🇪</span> Germany <span class="count">2,800</span></div>
+    <div class="sidebar-item"><span class="emoji">🇫🇷</span> France <span class="count">2,340</span></div>
+    <div class="sidebar-item"><span class="emoji">🇪🇸</span> Spain <span class="count">1,920</span></div>
+    <div class="sidebar-item"><span class="emoji">🇮🇹</span> Italy <span class="count">1,640</span></div>
+    <div class="sidebar-item"><span class="emoji">🇧🇷</span> Brazil <span class="count">2,100</span></div>
+    <div class="sidebar-item"><span class="emoji">🇮🇳</span> India <span class="count">4,200</span></div>
+    <div class="sidebar-item"><span class="emoji">🇸🇦</span> Arabic <span class="count">3,800</span></div>
+    <div class="sidebar-item"><span class="emoji">⚽</span> Sports <span class="count">5,600</span></div>
+    <div class="sidebar-item"><span class="emoji">🎬</span> Entertainment <span class="count">4,100</span></div>
+    <div class="sidebar-item"><span class="emoji">📰</span> News <span class="count">1,800</span></div>
+    <div class="sidebar-item"><span class="emoji">👶</span> Kids <span class="count">1,200</span></div>
+    <div class="sidebar-item"><span class="emoji">🎵</span> Music <span class="count">980</span></div>
+  </div>
+  <div class="home-main">
+    <div class="player-hero">
+      <div class="player-preview">
+        <div class="player-live-badge">LIVE</div>
+        <div class="player-quality">FHD 1080p</div>
+        <div class="player-center-icon">▶</div>
+        <div class="player-overlay">
+          <div class="player-channel-name">ESPN HD</div>
+          <div class="player-program">NBA Playoffs — Lakers vs Celtics • Started 20 min ago</div>
+        </div>
+      </div>
+      <div class="now-playing">
+        <div class="now-playing-title">Up Next</div>
+        <div class="np-channel active">
+          <div class="np-ch-logo" style="background:linear-gradient(135deg,#c8102e,#8b0000)">ESPN</div>
+          <div class="np-ch-info">
+            <div class="np-ch-name">ESPN HD</div>
+            <div class="np-ch-show">NBA Playoffs</div>
+          </div>
+          <div class="np-ch-time">NOW</div>
+        </div>
+        <div class="np-channel">
+          <div class="np-ch-logo" style="background:linear-gradient(135deg,#003087,#001f5b)">SKY</div>
+          <div class="np-ch-info">
+            <div class="np-ch-name">Sky Sports</div>
+            <div class="np-ch-show">Premier League Highlights</div>
+          </div>
+          <div class="np-ch-time">22:00</div>
+        </div>
+        <div class="np-channel">
+          <div class="np-ch-logo" style="background:linear-gradient(135deg,#ff6b00,#cc5500)">TNT</div>
+          <div class="np-ch-info">
+            <div class="np-ch-name">TNT Sports</div>
+            <div class="np-ch-show">Champions League</div>
+          </div>
+          <div class="np-ch-time">22:30</div>
+        </div>
+        <div class="np-channel">
+          <div class="np-ch-logo" style="background:linear-gradient(135deg,#1a8cff,#0059b3)">FOX</div>
+          <div class="np-ch-info">
+            <div class="np-ch-name">Fox News</div>
+            <div class="np-ch-show">Evening Report</div>
+          </div>
+          <div class="np-ch-time">23:00</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="channel-section-title">
+      ⭐ Favorites <span class="line"></span>
+    </div>
+    <div class="channel-grid">
+      <div class="channel-card">
+        <div class="ch-logo" style="background:linear-gradient(135deg,#c8102e,#8b0000)">ESPN</div>
+        <div class="ch-name">ESPN HD</div>
+        <div class="ch-program">NBA Playoffs</div>
+      </div>
+      <div class="channel-card">
+        <div class="ch-logo" style="background:linear-gradient(135deg,#00a8e1,#0077b5)">HBO</div>
+        <div class="ch-name">HBO Max</div>
+        <div class="ch-program">The Last of Us</div>
+      </div>
+      <div class="channel-card">
+        <div class="ch-logo" style="background:linear-gradient(135deg,#e50914,#b20710)">NET</div>
+        <div class="ch-name">Netflix Live</div>
+        <div class="ch-program">Comedy Special</div>
+      </div>
+      <div class="channel-card">
+        <div class="ch-logo" style="background:linear-gradient(135deg,#003087,#001f5b)">SKY</div>
+        <div class="ch-name">Sky Cinema</div>
+        <div class="ch-program">Movie Premiere</div>
+      </div>
+      <div class="channel-card">
+        <div class="ch-logo" style="background:linear-gradient(135deg,#5b21b6,#3b0f8a)">BIN</div>
+        <div class="ch-name">beIN Sports</div>
+        <div class="ch-program">La Liga</div>
+      </div>
+      <div class="channel-card">
+        <div class="ch-logo" style="background:linear-gradient(135deg,#f59e0b,#d97706)">NAT</div>
+        <div class="ch-name">Nat Geo HD</div>
+        <div class="ch-program">Wild Africa</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EPG SCREEN ═══ -->
+<div class="screen epg-screen" id="screen-epg">
+  <div class="epg-header">
+    <div class="epg-nav-btn">◀ Prev</div>
+    <div class="epg-date">Tuesday, April 15, 2026</div>
+    <div class="epg-nav-btn">Next ▶</div>
+    <div class="epg-now-btn">● NOW</div>
+    <div style="flex:1"></div>
+    <div class="badge-stat">Showing <span>50,000+</span> channels</div>
+  </div>
+  <div class="epg-container">
+    <div class="epg-now-line"></div>
+    <div class="epg-grid">
+      <!-- Time header -->
+      <div class="epg-time-cell" style="font-weight:800;">Channel</div>
+      <div class="epg-time-cell">19:00</div>
+      <div class="epg-time-cell">19:30</div>
+      <div class="epg-time-cell">20:00</div>
+      <div class="epg-time-cell">20:30</div>
+      <div class="epg-time-cell">21:00</div>
+      <div class="epg-time-cell">21:30</div>
+      <div class="epg-time-cell" style="color:var(--red);">22:00</div>
+      <div class="epg-time-cell">22:30</div>
+      <div class="epg-time-cell">23:00</div>
+      <div class="epg-time-cell">23:30</div>
+      <div class="epg-time-cell">00:00</div>
+      <div class="epg-time-cell">00:30</div>
+
+      <!-- Row 1: ESPN -->
+      <div class="epg-channel-cell">
+        <div class="epg-ch-logo" style="background:linear-gradient(135deg,#c8102e,#8b0000)">ESPN</div>
+        <div class="epg-ch-name">ESPN HD</div>
+      </div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">SportsCenter</div><div class="epg-program-time">19:00 - 20:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">SportsCenter</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Pre-Game</div><div class="epg-program-time">20:00 - 21:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Pre-Game</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">NBA Playoffs Live</div><div class="epg-program-time">21:00 - 23:30</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">NBA Playoffs Live</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">NBA Playoffs Live</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">NBA Playoffs Live</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">NBA Playoffs Live</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Post-Game</div><div class="epg-program-time">23:30</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">SC at Night</div><div class="epg-program-time">00:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">SC at Night</div><div class="epg-program-time">—</div></div></div>
+
+      <!-- Row 2: HBO -->
+      <div class="epg-channel-cell">
+        <div class="epg-ch-logo" style="background:linear-gradient(135deg,#00a8e1,#0077b5)">HBO</div>
+        <div class="epg-ch-name">HBO Max</div>
+      </div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">White Lotus S3</div><div class="epg-program-time">19:00 - 20:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">White Lotus S3</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Game of Thrones</div><div class="epg-program-time">20:00 - 21:15</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Game of Thrones</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">The Last of Us</div><div class="epg-program-time">21:15 - 22:15</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">The Last of Us</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Succession</div><div class="epg-program-time">22:15 - 23:15</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Succession</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Euphoria</div><div class="epg-program-time">23:15</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Euphoria</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Late Night</div><div class="epg-program-time">00:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Late Night</div><div class="epg-program-time">—</div></div></div>
+
+      <!-- Row 3: Sky Sports -->
+      <div class="epg-channel-cell">
+        <div class="epg-ch-logo" style="background:linear-gradient(135deg,#003087,#001f5b)">SKY</div>
+        <div class="epg-ch-name">Sky Sports</div>
+      </div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">F1 Qualifying</div><div class="epg-program-time">19:00 - 20:30</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">F1 Qualifying</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">F1 Qualifying</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Football Focus</div><div class="epg-program-time">20:30</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">PL: Arsenal v City</div><div class="epg-program-time">21:00 - 23:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">PL: Arsenal v City</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">PL: Arsenal v City</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">PL: Arsenal v City</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">PL Highlights</div><div class="epg-program-time">23:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">PL Highlights</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Boxing Replay</div><div class="epg-program-time">00:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Boxing Replay</div><div class="epg-program-time">—</div></div></div>
+
+      <!-- Row 4: CNN -->
+      <div class="epg-channel-cell">
+        <div class="epg-ch-logo" style="background:linear-gradient(135deg,#cc0000,#990000)">CNN</div>
+        <div class="epg-ch-name">CNN International</div>
+      </div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">CNN Newsroom</div><div class="epg-program-time">19:00 - 20:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">CNN Newsroom</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Anderson Cooper</div><div class="epg-program-time">20:00 - 21:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Anderson Cooper</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">CNN Tonight</div><div class="epg-program-time">21:00 - 22:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">CNN Tonight</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Don Lemon</div><div class="epg-program-time">22:00 - 23:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Don Lemon</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">CNN Special</div><div class="epg-program-time">23:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">CNN Special</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">World Sport</div><div class="epg-program-time">00:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">World Sport</div><div class="epg-program-time">—</div></div></div>
+
+      <!-- Row 5: Discovery -->
+      <div class="epg-channel-cell">
+        <div class="epg-ch-logo" style="background:linear-gradient(135deg,#0072ce,#004b87)">DSC</div>
+        <div class="epg-ch-name">Discovery HD</div>
+      </div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">MythBusters</div><div class="epg-program-time">19:00 - 20:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">MythBusters</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Deadliest Catch</div><div class="epg-program-time">20:00 - 21:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Deadliest Catch</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">Gold Rush</div><div class="epg-program-time">21:00 - 22:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">Gold Rush</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Naked and Afraid</div><div class="epg-program-time">22:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Naked and Afraid</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">How It's Made</div><div class="epg-program-time">23:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">How It's Made</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Street Outlaws</div><div class="epg-program-time">00:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Street Outlaws</div><div class="epg-program-time">—</div></div></div>
+
+      <!-- Row 6: Nat Geo -->
+      <div class="epg-channel-cell">
+        <div class="epg-ch-logo" style="background:linear-gradient(135deg,#f59e0b,#d97706)">NAT</div>
+        <div class="epg-ch-name">Nat Geo HD</div>
+      </div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Wild Africa</div><div class="epg-program-time">19:00 - 20:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Wild Africa</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Ocean Giants</div><div class="epg-program-time">20:00 - 21:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Ocean Giants</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">Cosmos</div><div class="epg-program-time">21:00 - 22:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program now"><div class="epg-program-name">Cosmos</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Mars</div><div class="epg-program-time">22:00 - 23:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Mars</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Explorer</div><div class="epg-program-time">23:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Explorer</div><div class="epg-program-time">—</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Origins</div><div class="epg-program-time">00:00</div></div></div>
+      <div class="epg-program-cell"><div class="epg-program"><div class="epg-program-name">Origins</div><div class="epg-program-time">—</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MOVIES SCREEN ═══ -->
+<div class="screen movies-screen" id="screen-movies">
+  <div class="movies-hero">
+    <div class="featured-movie">
+      <div class="featured-movie-bg"></div>
+      <div class="featured-movie-info">
+        <div class="featured-tag">FEATURED</div>
+        <div class="featured-title">Dune: Part Three</div>
+        <div class="featured-meta">
+          <span>2026</span>
+          <span class="star">★ 8.9</span>
+          <span>2h 45m</span>
+          <span>Sci-Fi</span>
+        </div>
+        <button class="featured-play-btn">▶ Watch Now</button>
+      </div>
+      <div class="featured-movie-poster">🏜️</div>
+    </div>
+    <div class="side-picks">
+      <div class="side-pick">
+        <div class="side-pick-poster" style="background:linear-gradient(135deg,#1a3a5c,#0d1f33)">🦇</div>
+        <div class="side-pick-info">
+          <div class="side-pick-title">The Batman II</div>
+          <div class="side-pick-meta">2026 • Action</div>
+          <div class="side-pick-rating">★ 8.4</div>
+        </div>
+      </div>
+      <div class="side-pick">
+        <div class="side-pick-poster" style="background:linear-gradient(135deg,#3d1c02,#1a0a00)">👑</div>
+        <div class="side-pick-info">
+          <div class="side-pick-title">Gladiator III</div>
+          <div class="side-pick-meta">2026 • Drama</div>
+          <div class="side-pick-rating">★ 8.1</div>
+        </div>
+      </div>
+      <div class="side-pick">
+        <div class="side-pick-poster" style="background:linear-gradient(135deg,#0a2e0a,#051505)">🧬</div>
+        <div class="side-pick-info">
+          <div class="side-pick-title">Jurassic World 4</div>
+          <div class="side-pick-meta">2026 • Adventure</div>
+          <div class="side-pick-rating">★ 7.8</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="movie-row-header">
+      <div class="movie-row-title">🔥 Trending Now</div>
+      <div class="movie-row-see-all">See All ▸</div>
+    </div>
+    <div class="movie-row" style="margin-top:10px;">
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#2d1b4e,#1a0e30)"><span class="quality-badge">4K</span><span class="rating-badge">★ 9.1</span>🎭</div><div class="movie-title">Oppenheimer</div><div class="movie-year">2023 • Drama</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#0d2137,#061420)"><span class="quality-badge">FHD</span><span class="rating-badge">★ 8.7</span>🌊</div><div class="movie-title">Avatar 3</div><div class="movie-year">2026 • Sci-Fi</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#3d0a0a,#1f0505)"><span class="quality-badge">4K</span><span class="rating-badge">★ 8.5</span>🕷️</div><div class="movie-title">Spider-Man 4</div><div class="movie-year">2026 • Action</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#1a2a1a,#0d150d)"><span class="quality-badge">FHD</span><span class="rating-badge">★ 8.3</span>💀</div><div class="movie-title">John Wick 5</div><div class="movie-year">2026 • Action</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#2a1a0a,#150d05)"><span class="quality-badge">4K</span><span class="rating-badge">★ 8.8</span>🏎️</div><div class="movie-title">Ford v Ferrari 2</div><div class="movie-year">2026 • Sport</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#0a1a2a,#050d15)"><span class="quality-badge">FHD</span><span class="rating-badge">★ 7.9</span>🚀</div><div class="movie-title">Interstellar 2</div><div class="movie-year">2026 • Sci-Fi</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#2a0a2a,#150515)"><span class="quality-badge">4K</span><span class="rating-badge">★ 8.2</span>🧙</div><div class="movie-title">Doctor Strange 3</div><div class="movie-year">2026 • Fantasy</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="movie-row-header">
+      <div class="movie-row-title">🎬 New Releases</div>
+      <div class="movie-row-see-all">See All ▸</div>
+    </div>
+    <div class="movie-row" style="margin-top:10px;">
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#1a1a3d,#0e0e20)"><span class="quality-badge">4K</span><span class="rating-badge">★ 8.6</span>⚡</div><div class="movie-title">Thunderbolts</div><div class="movie-year">2025 • Action</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#3d2a0a,#201505)"><span class="quality-badge">FHD</span><span class="rating-badge">★ 8.0</span>🤖</div><div class="movie-title">Mission: AI</div><div class="movie-year">2026 • Thriller</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#0a3d1a,#05200d)"><span class="quality-badge">FHD</span><span class="rating-badge">★ 7.7</span>🦖</div><div class="movie-title">Prehistoric Park</div><div class="movie-year">2026 • Adventure</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#3d0a1a,#20050d)"><span class="quality-badge">4K</span><span class="rating-badge">★ 8.4</span>🔥</div><div class="movie-title">Inferno Rising</div><div class="movie-year">2026 • Drama</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#1a0a3d,#0d0520)"><span class="quality-badge">FHD</span><span class="rating-badge">★ 7.5</span>👽</div><div class="movie-title">Contact 2</div><div class="movie-year">2026 • Sci-Fi</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#3d3d0a,#202005)"><span class="quality-badge">4K</span><span class="rating-badge">★ 8.1</span>⚔️</div><div class="movie-title">Kingdom</div><div class="movie-year">2026 • Fantasy</div></div>
+      <div class="movie-card"><div class="movie-poster" style="background:linear-gradient(135deg,#0a2a3d,#051520)"><span class="quality-badge">FHD</span><span class="rating-badge">★ 7.8</span>🎪</div><div class="movie-title">The Greatest</div><div class="movie-year">2026 • Bio</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SERIES SCREEN ═══ -->
+<div class="screen series-screen" id="screen-series">
+  <div class="series-hero-banner">
+    <div class="series-hero-content">
+      <div class="series-hero-label">Continue Watching</div>
+      <div class="series-hero-title">Breaking Bad</div>
+      <div class="series-hero-meta">
+        <span>S5 E14 • "Ozymandias"</span>
+        <span>★ 9.8</span>
+        <span>47 min left</span>
+      </div>
+    </div>
+    <div class="series-hero-poster">📺</div>
+  </div>
+
+  <div class="series-filters">
+    <div class="series-filter active">All</div>
+    <div class="series-filter">Drama</div>
+    <div class="series-filter">Action</div>
+    <div class="series-filter">Comedy</div>
+    <div class="series-filter">Sci-Fi</div>
+    <div class="series-filter">Thriller</div>
+    <div class="series-filter">Horror</div>
+    <div class="series-filter">Documentary</div>
+    <div class="series-filter">Anime</div>
+  </div>
+
+  <div>
+    <div class="movie-row-header">
+      <div class="movie-row-title">🔥 Popular Series</div>
+      <div class="movie-row-see-all">70,000+ Series ▸</div>
+    </div>
+  </div>
+
+  <div class="series-grid">
+    <div class="series-card"><div class="series-poster" style="background:linear-gradient(135deg,#1a3320,#0d1a10)"><span class="season-badge">S2 • 8 eps</span>🧟</div><div class="series-title">The Last of Us</div><div class="series-meta">Drama • ★ 8.8</div></div>
+    <div class="series-card"><div class="series-poster" style="background:linear-gradient(135deg,#33101a,#1a080d)"><span class="season-badge">S4 • 10 eps</span>👑</div><div class="series-title">Succession</div><div class="series-meta">Drama • ★ 8.9</div></div>
+    <div class="series-card"><div class="series-poster" style="background:linear-gradient(135deg,#102033,#081018)"><span class="season-badge">S2 • 8 eps</span>🐉</div><div class="series-title">House of Dragon</div><div class="series-meta">Fantasy • ★ 8.5</div></div>
+    <div class="series-card"><div class="series-poster" style="background:linear-gradient(135deg,#331a10,#180d08)"><span class="season-badge">S5 • 12 eps</span>🏢</div><div class="series-title">Yellowstone</div><div class="series-meta">Drama • ★ 8.7</div></div>
+    <div class="series-card"><div class="series-poster" style="background:linear-gradient(135deg,#20103d,#100820)"><span class="season-badge">S4 • 9 eps</span>🔬</div><div class="series-title">Stranger Things</div><div class="series-meta">Sci-Fi • ★ 8.7</div></div>
+    <div class="series-card"><div class="series-poster" style="background:linear-gradient(135deg,#0a1a33,#050d1a)"><span class="season-badge">S3 • 8 eps</span>🏴‍☠️</div><div class="series-title">The Witcher</div><div class="series-meta">Fantasy • ★ 8.2</div></div>
+    <div class="series-card"><div class="series-poster" style="background:linear-gradient(135deg,#331010,#1a0808)"><span class="season-badge">S6 • 13 eps</span>🃏</div><div class="series-title">Peaky Blinders</div><div class="series-meta">Crime • ★ 8.8</div></div>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS SCREEN ═══ -->
+<div class="screen settings-screen" id="screen-settings">
+  <div class="settings-nav">
+    <div class="sidebar-title" style="padding:8px 24px;">Settings</div>
+    <div class="settings-nav-item active"><span class="s-icon">⚙️</span> General</div>
+    <div class="settings-nav-item"><span class="s-icon">🎨</span> Appearance</div>
+    <div class="settings-nav-item"><span class="s-icon">▶</span> Player</div>
+    <div class="settings-nav-item"><span class="s-icon">📡</span> Playlists</div>
+    <div class="settings-nav-item"><span class="s-icon">📺</span> EPG</div>
+    <div class="settings-nav-item"><span class="s-icon">🔔</span> Notifications</div>
+    <div class="settings-nav-item"><span class="s-icon">🔒</span> Parental Control</div>
+    <div class="settings-nav-item"><span class="s-icon">💾</span> Backup & Restore</div>
+    <div class="settings-nav-item"><span class="s-icon">ℹ️</span> About</div>
+  </div>
+  <div class="settings-content">
+    <div class="settings-title">General Settings</div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">Playback</div>
+      <div class="setting-row">
+        <div><div class="setting-label">Default Quality</div><div class="setting-desc">Preferred stream quality when available</div></div>
+        <select class="setting-select"><option>Auto</option><option selected>Full HD (1080p)</option><option>HD (720p)</option><option>SD (480p)</option></select>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Hardware Decoding</div><div class="setting-desc">Use hardware acceleration for video playback</div></div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Buffer Size</div><div class="setting-desc">Larger buffer reduces buffering on slow connections</div></div>
+        <select class="setting-select"><option>Small (2s)</option><option selected>Medium (5s)</option><option>Large (10s)</option></select>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Auto-play Next Episode</div><div class="setting-desc">Automatically play the next episode in a series</div></div>
+        <div class="toggle on"></div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">EPG</div>
+      <div class="setting-row">
+        <div><div class="setting-label">Auto-update EPG</div><div class="setting-desc">Refresh program guide data automatically</div></div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Update Interval</div><div class="setting-desc">How often to refresh EPG data</div></div>
+        <select class="setting-select"><option>Every 4 hours</option><option selected>Every 8 hours</option><option>Every 12 hours</option><option>Daily</option></select>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">EPG Timeshift</div><div class="setting-desc">Adjust EPG times if they don't match your timezone</div></div>
+        <div class="setting-value">UTC +0:00</div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">Connection</div>
+      <div class="setting-row">
+        <div><div class="setting-label">Xtream Codes API</div><div class="setting-desc">Server URL for your IPTV service</div></div>
+        <div class="setting-value">Connected ✓</div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Max Connections</div><div class="setting-desc">Number of simultaneous streams</div></div>
+        <select class="setting-select"><option selected>1</option><option>2</option><option>3</option><option>4</option></select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tab navigation
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('screen-' + tab.dataset.screen).classList.add('active');
+  });
+});
+
+// Live clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+// Toggle switches
+document.querySelectorAll('.toggle').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('on'));
+});
+
+// Series filter
+document.querySelectorAll('.series-filter').forEach(f => {
+  f.addEventListener('click', () => {
+    document.querySelectorAll('.series-filter').forEach(x => x.classList.remove('active'));
+    f.classList.add('active');
+  });
+});
+
+// Sidebar items
+document.querySelectorAll('.sidebar-item').forEach(item => {
+  item.addEventListener('click', () => {
+    item.parentElement.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
