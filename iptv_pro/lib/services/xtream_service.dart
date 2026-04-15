@@ -33,8 +33,8 @@ class XtreamService {
     throw Exception('HTTP ${response.statusCode}');
   }
 
-  Future<List<dynamic>> _getList(String url) async {
-    final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 60));
+  Future<List<dynamic>> _getList(String url, {Duration? timeout}) async {
+    final response = await http.get(Uri.parse(url)).timeout(timeout ?? const Duration(seconds: 60));
     if (response.statusCode == 200) {
       return json.decode(response.body) as List<dynamic>;
     }
@@ -65,7 +65,7 @@ class XtreamService {
   Future<List<LiveStream>> getLiveStreams({String? categoryId}) async {
     String url = '$_apiUrl?username=$_username&password=$_password&action=get_live_streams';
     if (categoryId != null) url += '&category_id=$categoryId';
-    final data = await _getList(url);
+    final data = await _getList(url, timeout: categoryId == null ? const Duration(seconds: 120) : null);
     return data.map((e) => LiveStream.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -77,7 +77,7 @@ class XtreamService {
   Future<List<VodStream>> getVodStreams({String? categoryId}) async {
     String url = '$_apiUrl?username=$_username&password=$_password&action=get_vod_streams';
     if (categoryId != null) url += '&category_id=$categoryId';
-    final data = await _getList(url);
+    final data = await _getList(url, timeout: categoryId == null ? const Duration(seconds: 180) : null);
     return data.map((e) => VodStream.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -89,7 +89,7 @@ class XtreamService {
   Future<List<SeriesItem>> getSeries({String? categoryId}) async {
     String url = '$_apiUrl?username=$_username&password=$_password&action=get_series';
     if (categoryId != null) url += '&category_id=$categoryId';
-    final data = await _getList(url);
+    final data = await _getList(url, timeout: categoryId == null ? const Duration(seconds: 180) : null);
     return data.map((e) => SeriesItem.fromJson(e as Map<String, dynamic>)).toList();
   }
 

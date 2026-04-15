@@ -65,6 +65,11 @@ class _SeriesScreenState extends State<SeriesScreen> {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
+        // Re-trigger search when all data finishes loading in background
+        if (_searchQuery.length >= 2 && _searchResults.isEmpty && provider.allSeries.isNotEmpty) {
+          _performSearch(_searchQuery);
+        }
+
         List<SeriesItem> series;
         if (_searchQuery.length >= 2) {
           series = _searchResults;

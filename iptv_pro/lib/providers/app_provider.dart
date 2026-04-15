@@ -275,11 +275,32 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  bool _loadingAllVod = false;
+
   Future<List<VodStream>> searchVodStreams(String query) async {
-    if (_allVodStreams.isEmpty) {
-      _allVodStreams = await _service.getVodStreams();
+    final q = query.toLowerCase();
+    // First search in current category results
+    final localResults = _currentVodStreams.where((m) => m.name.toLowerCase().contains(q)).toList();
+
+    // If we have all VOD cached, search there
+    if (_allVodStreams.isNotEmpty) {
+      return _allVodStreams.where((m) => m.name.toLowerCase().contains(q)).toList();
     }
-    return _allVodStreams.where((m) => m.name.toLowerCase().contains(query.toLowerCase())).toList();
+
+    // Start loading all VOD in background if not already loading
+    if (!_loadingAllVod) {
+      _loadingAllVod = true;
+      try {
+        _allVodStreams = await _service.getVodStreams();
+        _loadingAllVod = false;
+        notifyListeners(); // Trigger rebuild with full results
+      } catch (e) {
+        _loadingAllVod = false;
+      }
+    }
+
+    // Return local results for now
+    return localResults;
   }
 
   Future<void> loadSeriesCategories() async {
@@ -313,11 +334,28 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  bool _loadingAllSeries = false;
+
   Future<List<SeriesItem>> searchSeries(String query) async {
-    if (_allSeries.isEmpty) {
-      _allSeries = await _service.getSeries();
+    final q = query.toLowerCase();
+    final localResults = _currentSeries.where((s) => s.name.toLowerCase().contains(q)).toList();
+
+    if (_allSeries.isNotEmpty) {
+      return _allSeries.where((s) => s.name.toLowerCase().contains(q)).toList();
     }
-    return _allSeries.where((s) => s.name.toLowerCase().contains(query.toLowerCase())).toList();
+
+    if (!_loadingAllSeries) {
+      _loadingAllSeries = true;
+      try {
+        _allSeries = await _service.getSeries();
+        _loadingAllSeries = false;
+        notifyListeners();
+      } catch (e) {
+        _loadingAllSeries = false;
+      }
+    }
+
+    return localResults;
   }
 
   Future<SeriesInfo> getSeriesInfo(int seriesId) async {

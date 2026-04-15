@@ -67,6 +67,11 @@ class _MoviesScreenState extends State<MoviesScreen> {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
+        // Re-trigger search when all data finishes loading in background
+        if (_searchQuery.length >= 2 && _searchResults.isEmpty && provider.allVodStreams.isNotEmpty) {
+          _performSearch(_searchQuery);
+        }
+
         List<VodStream> movies;
         if (_searchQuery.length >= 2) {
           movies = _searchResults;

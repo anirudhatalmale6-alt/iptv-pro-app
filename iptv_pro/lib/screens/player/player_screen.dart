@@ -181,6 +181,87 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _loadEpg(ch.streamId);
   }
 
+  String _selectedSubtitleLang = 'off';
+
+  void _showSubtitlePicker() {
+    final languages = [
+      {'code': 'off', 'name': 'Off'},
+      {'code': 'eng', 'name': 'English'},
+      {'code': 'fra', 'name': 'French'},
+      {'code': 'ara', 'name': 'Arabic'},
+      {'code': 'spa', 'name': 'Spanish'},
+      {'code': 'deu', 'name': 'German'},
+      {'code': 'por', 'name': 'Portuguese'},
+      {'code': 'ita', 'name': 'Italian'},
+      {'code': 'tur', 'name': 'Turkish'},
+      {'code': 'rus', 'name': 'Russian'},
+      {'code': 'hin', 'name': 'Hindi'},
+      {'code': 'zho', 'name': 'Chinese'},
+      {'code': 'jpn', 'name': 'Japanese'},
+      {'code': 'kor', 'name': 'Korean'},
+      {'code': 'nld', 'name': 'Dutch'},
+      {'code': 'pol', 'name': 'Polish'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bgDeep.withOpacity(0.95),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text('Subtitles / CC', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: languages.length,
+                  itemBuilder: (context, index) {
+                    final lang = languages[index];
+                    final isSelected = _selectedSubtitleLang == lang['code'];
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(
+                        isSelected ? Icons.check_circle : Icons.circle_outlined,
+                        color: isSelected ? AppColors.red : AppColors.whiteMuted,
+                        size: 20,
+                      ),
+                      title: Text(lang['name']!, style: TextStyle(
+                        color: isSelected ? Colors.white : AppColors.whiteDim,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                        fontSize: 14,
+                      )),
+                      onTap: () {
+                        setState(() {
+                          _selectedSubtitleLang = lang['code']!;
+                          _subtitlesEnabled = lang['code'] != 'off';
+                        });
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Text(
+                  'Subtitle availability depends on the stream source. If subtitles are embedded in the stream they will display automatically.',
+                  style: TextStyle(color: AppColors.whiteMuted, fontSize: 10),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _retryPlay() {
     _controller?.removeListener(_onUpdate);
     _controller?.dispose();
@@ -385,14 +466,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       _subtitlesEnabled ? Icons.closed_caption : Icons.closed_caption_off,
                       color: _subtitlesEnabled ? AppColors.red : Colors.white,
                     ),
-                    onPressed: () {
-                      setState(() => _subtitlesEnabled = !_subtitlesEnabled);
-                      if (_controller != null) {
-                        _controller!.setClosedCaptionFile(
-                          _subtitlesEnabled ? _controller!.closedCaptionFile : null,
-                        );
-                      }
-                    },
+                    onPressed: _showSubtitlePicker,
                   ),
                 // Info button
                 IconButton(
