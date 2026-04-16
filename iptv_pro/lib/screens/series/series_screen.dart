@@ -157,22 +157,44 @@ class _SeriesScreenState extends State<SeriesScreen> {
                           );
                         }
                         if (index == 1) {
-                          return _buildChip('All', !_showFavorites && _selectedCategoryId == null, () {
+                          return _buildChip('All', !_showFavorites && _selectedCategoryId == null, () async {
                             setState(() {
                               _selectedCategoryId = null;
                               _showFavorites = false;
                             });
-                            provider.loadSeries(null);
+                            await provider.loadSeries(null);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Loaded ${provider.currentSeries.length} series (All)'),
+                                  duration: const Duration(seconds: 3),
+                                  backgroundColor: AppColors.bgCard,
+                                ),
+                              );
+                            }
                           });
                         }
                         final cat = provider.seriesCategories[index - 2];
-                        return _buildChip(cat.categoryName, !_showFavorites && _selectedCategoryId == cat.categoryId, () {
+                        return _buildChip(cat.categoryName, !_showFavorites && _selectedCategoryId == cat.categoryId, () async {
                           debugPrint('Series chip tapped: ${cat.categoryId} - ${cat.categoryName}');
                           setState(() {
                             _selectedCategoryId = cat.categoryId;
                             _showFavorites = false;
                           });
-                          provider.loadSeries(cat.categoryId);
+                          await provider.loadSeries(cat.categoryId);
+                          if (mounted) {
+                            final count = provider.currentSeries.length;
+                            final err = provider.seriesError;
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(err != null ? 'Error: $err' : 'Loaded $count series for ${cat.categoryName}'),
+                                duration: const Duration(seconds: 3),
+                                backgroundColor: err != null ? Colors.red : AppColors.bgCard,
+                              ),
+                            );
+                          }
                         });
                       },
                     ),
@@ -239,7 +261,8 @@ class _SeriesScreenState extends State<SeriesScreen> {
                               // Debug info
                               const SizedBox(height: 16),
                               Text(
-                                'Categories: ${provider.seriesCategories.length} | Selected: ${_selectedCategoryId ?? "none"} | Loading: ${provider.isLoadingSeries}',
+                                'v3.8.2 | Cats: ${provider.seriesCategories.length} | Sel: ${_selectedCategoryId ?? "none"} | ProvSel: ${provider.selectedSeriesCategoryId ?? "none"}\n'
+                                'Loading: ${provider.isLoadingSeries} | Data: ${provider.currentSeries.length} | Err: ${provider.seriesError ?? "none"}',
                                 style: const TextStyle(color: AppColors.whiteMuted, fontSize: 9),
                                 textAlign: TextAlign.center,
                               ),
