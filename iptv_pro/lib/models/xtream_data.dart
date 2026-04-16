@@ -132,7 +132,7 @@ class LiveStream {
       added: json['added']?.toString(),
       isAdult: json['is_adult']?.toString(),
       categoryId: json['category_id']?.toString(),
-      categoryIds: json['category_ids'] as List<dynamic>?,
+      categoryIds: json['category_ids'] is List ? json['category_ids'] as List<dynamic> : null,
       customSid: json['custom_sid']?.toString(),
       tvArchive: json['tv_archive'] is int ? json['tv_archive'] : int.tryParse(json['tv_archive']?.toString() ?? ''),
       directSource: json['direct_source']?.toString(),
@@ -241,7 +241,11 @@ class SeriesItem {
       lastModified: json['last_modified']?.toString(),
       rating: json['rating']?.toString(),
       categoryId: json['category_id']?.toString(),
-      backdropPath: json['backdrop_path'] as String?,
+      backdropPath: json['backdrop_path'] is String
+          ? json['backdrop_path'] as String
+          : (json['backdrop_path'] is List && (json['backdrop_path'] as List).isNotEmpty)
+              ? (json['backdrop_path'] as List).first?.toString()
+              : null,
     );
   }
 
