@@ -746,10 +746,11 @@ class _ChannelCard extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: stream.streamIcon!,
                             fit: BoxFit.contain,
-                            placeholder: (_, __) => _buildPlaceholder(),
-                            errorWidget: (_, __, ___) => _buildPlaceholder(),
+                            fadeInDuration: const Duration(milliseconds: 200),
+                            placeholder: (_, __) => _buildInitialsPlaceholder(),
+                            errorWidget: (_, __, ___) => _buildInitialsPlaceholder(),
                           )
-                        : _buildPlaceholder(),
+                        : _buildInitialsPlaceholder(),
                   ),
                   const SizedBox(height: 4),
                   Text(stream.name, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isPlaying ? Colors.white : null), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
@@ -770,11 +771,40 @@ class _ChannelCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholder() {
-    return Container(
-      width: 36, height: 36,
-      decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.red.withOpacity(0.3), AppColors.redDark.withOpacity(0.3)]), borderRadius: BorderRadius.circular(8)),
-      child: const Icon(Icons.tv, color: AppColors.whiteDim, size: 18),
+  Widget _buildInitialsPlaceholder() {
+    // Extract meaningful initials from channel name
+    final name = stream.name.replaceAll(RegExp(r'[^\w\s]'), '').trim();
+    final parts = name.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    final initials = parts.length >= 2
+        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+        : (parts.isNotEmpty && parts[0].length >= 2 ? parts[0].substring(0, 2).toUpperCase() : 'TV');
+    // Consistent color based on channel name
+    final colors = [
+      const Color(0xFF5C6BC0), // indigo
+      const Color(0xFF26A69A), // teal
+      const Color(0xFFAB47BC), // purple
+      const Color(0xFFEF5350), // red
+      const Color(0xFF42A5F5), // blue
+      const Color(0xFFFFA726), // orange
+      const Color(0xFF66BB6A), // green
+      const Color(0xFFEC407A), // pink
+    ];
+    final color = colors[stream.name.hashCode.abs() % colors.length];
+    return Center(
+      child: Container(
+        width: 52, height: 52,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Center(
+          child: Text(
+            initials,
+            style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1),
+          ),
+        ),
+      ),
     );
   }
 }
