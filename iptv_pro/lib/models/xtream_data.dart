@@ -126,7 +126,7 @@ class LiveStream {
       num: json['num'] is int ? json['num'] : int.tryParse(json['num']?.toString() ?? ''),
       name: json['name']?.toString() ?? 'Unknown',
       streamType: json['stream_type']?.toString(),
-      streamId: json['stream_id'] is int ? json['stream_id'] : int.parse(json['stream_id'].toString()),
+      streamId: json['stream_id'] is int ? json['stream_id'] : (int.tryParse(json['stream_id']?.toString() ?? '') ?? 0),
       streamIcon: json['stream_icon']?.toString(),
       epgChannelId: json['epg_channel_id']?.toString(),
       added: json['added']?.toString(),
@@ -175,7 +175,7 @@ class VodStream {
       num: json['num'] is int ? json['num'] : int.tryParse(json['num']?.toString() ?? ''),
       name: json['name']?.toString() ?? 'Unknown',
       streamType: json['stream_type']?.toString(),
-      streamId: json['stream_id'] is int ? json['stream_id'] : int.parse(json['stream_id'].toString()),
+      streamId: json['stream_id'] is int ? json['stream_id'] : (int.tryParse(json['stream_id']?.toString() ?? '') ?? 0),
       streamIcon: json['stream_icon']?.toString(),
       rating: json['rating']?.toString(),
       ratingFiveStars: json['rating_5based']?.toString(),
@@ -225,10 +225,13 @@ class SeriesItem {
   });
 
   factory SeriesItem.fromJson(Map<String, dynamic> json) {
+    // Defensive parsing - series_id can be int, string, or null
+    final rawId = json['series_id'];
+    final seriesId = rawId is int ? rawId : (int.tryParse(rawId?.toString() ?? '') ?? 0);
     return SeriesItem(
       num: json['num'] is int ? json['num'] : int.tryParse(json['num']?.toString() ?? ''),
       name: json['name']?.toString() ?? 'Unknown',
-      seriesId: json['series_id'] is int ? json['series_id'] : int.parse(json['series_id'].toString()),
+      seriesId: seriesId,
       cover: json['cover']?.toString(),
       plot: json['plot']?.toString(),
       cast: json['cast']?.toString(),

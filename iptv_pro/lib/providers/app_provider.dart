@@ -17,7 +17,13 @@ class AppProvider extends ChangeNotifier {
   bool get isLoadingSeries => _isLoadingSeries;
 
   String? _error;
+  String? _liveError;
+  String? _vodError;
+  String? _seriesError;
   String? get error => _error;
+  String? get liveError => _liveError;
+  String? get vodError => _vodError;
+  String? get seriesError => _seriesError;
 
   bool get isLoggedIn => _service.isLoggedIn;
   UserInfo? get userInfo => _service.userInfo;
@@ -177,9 +183,11 @@ class AppProvider extends ChangeNotifier {
     }
 
     try {
-      _seriesCategories = await _service.getSeriesCategories();
-      notifyListeners();
-      if (_seriesCategories.isNotEmpty) {
+      if (_seriesCategories.isEmpty) {
+        _seriesCategories = await _service.getSeriesCategories();
+        notifyListeners();
+      }
+      if (_seriesCategories.isNotEmpty && _currentSeries.isEmpty && !_isLoadingSeries) {
         loadSeries(_seriesCategories.first.categoryId);
       }
     } catch (e) {
@@ -229,6 +237,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadLiveStreams(String? categoryId) async {
     _selectedLiveCategoryId = categoryId;
     _isLoadingLive = true;
+    _liveError = null;
     notifyListeners();
     try {
       if (categoryId == '__favorites__') {
@@ -246,7 +255,7 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isLoadingLive = false;
-      _error = 'Failed to load streams';
+      _liveError = 'Failed to load streams: $e';
       notifyListeners();
     }
   }
@@ -268,7 +277,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadVodStreams(String? categoryId) async {
     _selectedVodCategoryId = categoryId;
     _isLoadingVod = true;
-    _error = null;
+    _vodError = null;
     notifyListeners();
     try {
       final results = await _service.getVodStreams(categoryId: categoryId);
@@ -280,7 +289,7 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isLoadingVod = false;
-      _error = 'Failed to load movies: $e';
+      _vodError = 'Failed to load movies: $e';
       notifyListeners();
     }
   }
@@ -324,9 +333,11 @@ class AppProvider extends ChangeNotifier {
   List<SeriesItem> get allSeries => _allSeries;
 
   Future<void> loadSeries(String? categoryId) async {
+    // Guard against concurrent loads for the same category
+    if (_isLoadingSeries && _selectedSeriesCategoryId == categoryId) return;
     _selectedSeriesCategoryId = categoryId;
     _isLoadingSeries = true;
-    _error = null;
+    _seriesError = null;
     notifyListeners();
     try {
       final results = await _service.getSeries(categoryId: categoryId);
@@ -335,10 +346,12 @@ class AppProvider extends ChangeNotifier {
         _allSeries = results;
       }
       _isLoadingSeries = false;
+      _seriesError = null;
       notifyListeners();
     } catch (e) {
       _isLoadingSeries = false;
-      _error = 'Failed to load series: $e';
+      _seriesError = 'Failed to load series: $e';
+      debugPrint('Series load error: $e');
       notifyListeners();
     }
   }

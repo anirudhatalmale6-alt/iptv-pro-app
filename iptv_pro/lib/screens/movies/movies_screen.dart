@@ -194,13 +194,13 @@ class _MoviesScreenState extends State<MoviesScreen> {
                               Text(
                                 _showFavorites
                                     ? 'No movies in your list yet\nLong press a movie to add it'
-                                    : provider.error != null
-                                        ? 'Error loading movies\n${provider.error}'
+                                    : provider.vodError != null
+                                        ? 'Error loading movies\n${provider.vodError}'
                                         : 'Tap a category to browse movies',
                                 style: TextStyle(color: AppColors.whiteMuted),
                                 textAlign: TextAlign.center,
                               ),
-                              if (!_showFavorites && (provider.error != null || !provider.isLoadingVod)) ...[
+                              if (!_showFavorites && (provider.vodError != null || !provider.isLoadingVod)) ...[
                                 const SizedBox(height: 12),
                                 ElevatedButton.icon(
                                   onPressed: () {

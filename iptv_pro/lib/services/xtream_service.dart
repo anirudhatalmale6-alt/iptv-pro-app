@@ -111,7 +111,15 @@ class XtreamService {
     String url = '$_apiUrl?username=$_username&password=$_password&action=get_series';
     if (categoryId != null) url += '&category_id=$categoryId';
     final data = await _getList(url, timeout: const Duration(seconds: 120));
-    return data.map((e) => SeriesItem.fromJson(e as Map<String, dynamic>)).toList();
+    final List<SeriesItem> results = [];
+    for (final e in data) {
+      try {
+        results.add(SeriesItem.fromJson(e as Map<String, dynamic>));
+      } catch (_) {
+        // Skip items that fail to parse
+      }
+    }
+    return results;
   }
 
   Future<SeriesInfo> getSeriesInfo(int seriesId) async {

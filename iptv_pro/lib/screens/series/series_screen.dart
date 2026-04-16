@@ -202,24 +202,37 @@ class _SeriesScreenState extends State<SeriesScreen> {
                               Text(
                                 _showFavorites
                                     ? 'No series in your list yet\nLong press a series to add it'
-                                    : provider.error != null
-                                        ? 'Error loading series\n${provider.error}'
+                                    : provider.seriesError != null
+                                        ? 'Error loading series\n${provider.seriesError}'
                                         : 'Tap a category to browse series',
                                 style: TextStyle(color: AppColors.whiteMuted),
                                 textAlign: TextAlign.center,
                               ),
-                              if (provider.error != null || (!provider.isLoadingSeries && !_showFavorites)) ...[
+                              if (provider.seriesError != null || (!provider.isLoadingSeries && !_showFavorites)) ...[
                                 const SizedBox(height: 12),
                                 ElevatedButton.icon(
                                   onPressed: () {
                                     final catId = _selectedCategoryId ?? (provider.seriesCategories.isNotEmpty ? provider.seriesCategories.first.categoryId : null);
-                                    if (catId != null) provider.loadSeries(catId);
+                                    if (catId != null) {
+                                      provider.loadSeries(catId);
+                                    } else {
+                                      // Force reload everything
+                                      _loaded = false;
+                                      _initSeries();
+                                    }
                                   },
                                   icon: const Icon(Icons.refresh, size: 16),
                                   label: const Text('Retry'),
                                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
                                 ),
                               ],
+                              // Debug info
+                              const SizedBox(height: 16),
+                              Text(
+                                'Categories: ${provider.seriesCategories.length} | Selected: ${_selectedCategoryId ?? "none"} | Loading: ${provider.isLoadingSeries}',
+                                style: const TextStyle(color: AppColors.whiteMuted, fontSize: 9),
+                                textAlign: TextAlign.center,
+                              ),
                             ],
                           ),
                         )
