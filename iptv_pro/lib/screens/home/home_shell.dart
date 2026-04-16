@@ -79,25 +79,17 @@ class _HomeShellState extends State<HomeShell> {
       child: Row(
         children: [
           // Logo
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.red, AppColors.redDark],
-              ),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [BoxShadow(color: AppColors.redGlow, blurRadius: 16)],
+          Image.asset(
+            'assets/images/veltrix_header.png',
+            height: 28,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Text(
+              'VELTRIX TV',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
             ),
-            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            'IPTV Pro',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
           ),
           const SizedBox(width: 40),
 

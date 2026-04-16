@@ -1,7 +1,7 @@
 name: iptv_pro
-description: "IPTV Pro - Premium Streaming App"
+description: "Veltrix TV - Premium Streaming App"
 publish_to: 'none'
-version: 3.9.0+16
+version: 4.0.0+17
 
 environment:
   sdk: ^3.6.1
@@ -29,3 +29,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/

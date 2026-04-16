@@ -23,7 +23,7 @@ class IPTVProApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MiniPlayerProvider()),
       ],
       child: MaterialApp(
-        title: 'IPTV Pro',
+        title: 'Veltrix TV',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
         home: const LoginScreen(),
