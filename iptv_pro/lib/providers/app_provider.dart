@@ -339,16 +339,20 @@ class AppProvider extends ChangeNotifier {
   List<SeriesItem> get allSeries => _allSeries;
 
   Future<void> loadSeries(String? categoryId) async {
-    // Guard against concurrent loads for the same category
-    if (_isLoadingSeries && _selectedSeriesCategoryId == categoryId) return;
+    debugPrint('loadSeries called: categoryId=$categoryId, isLoading=$_isLoadingSeries, selected=$_selectedSeriesCategoryId');
     _selectedSeriesCategoryId = categoryId;
     _isLoadingSeries = true;
     _seriesError = null;
+    _currentSeries = []; // Clear immediately so loading indicator shows
     notifyListeners();
     try {
       final results = await _service.getSeries(categoryId: categoryId);
+      debugPrint('loadSeries result: categoryId=$categoryId, count=${results.length}, stillSelected=${_selectedSeriesCategoryId == categoryId}');
       // Discard stale response if user switched categories while loading
-      if (_selectedSeriesCategoryId != categoryId) return;
+      if (_selectedSeriesCategoryId != categoryId) {
+        debugPrint('loadSeries: discarding stale result for $categoryId (current=$_selectedSeriesCategoryId)');
+        return;
+      }
       _currentSeries = results;
       if (categoryId == null) {
         _allSeries = results;
@@ -357,11 +361,11 @@ class AppProvider extends ChangeNotifier {
       _seriesError = null;
       notifyListeners();
     } catch (e) {
+      debugPrint('loadSeries error: categoryId=$categoryId, error=$e');
       // Only apply error if this is still the active category
       if (_selectedSeriesCategoryId != categoryId) return;
       _isLoadingSeries = false;
       _seriesError = 'Failed to load series: $e';
-      debugPrint('Series load error: $e');
       notifyListeners();
     }
   }

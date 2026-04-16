@@ -167,6 +167,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
                         }
                         final cat = provider.seriesCategories[index - 2];
                         return _buildChip(cat.categoryName, !_showFavorites && _selectedCategoryId == cat.categoryId, () {
+                          debugPrint('Series chip tapped: ${cat.categoryId} - ${cat.categoryName}');
                           setState(() {
                             _selectedCategoryId = cat.categoryId;
                             _showFavorites = false;
@@ -180,8 +181,17 @@ class _SeriesScreenState extends State<SeriesScreen> {
               ),
             ),
 
+            // Show results count when not loading
+            if (!provider.isLoadingSeries && series.isNotEmpty && !_showFavorites)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Text(
+                  '${series.length} series',
+                  style: const TextStyle(color: AppColors.whiteMuted, fontSize: 11),
+                ),
+              ),
             Expanded(
-              child: provider.isLoadingSeries && series.isEmpty
+              child: provider.isLoadingSeries
                   ? const Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
