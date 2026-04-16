@@ -81,7 +81,7 @@ class _HomeShellState extends State<HomeShell> {
           // Logo
           Image.asset(
             'assets/images/veltrix_header.png',
-            height: 28,
+            height: 40,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => Text(
               'VELTRIX TV',
