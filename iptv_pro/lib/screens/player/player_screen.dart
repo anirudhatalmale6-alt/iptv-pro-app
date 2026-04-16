@@ -472,33 +472,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
     }
     if (_videoController != null) {
-      return Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Video(
-            controller: _videoController!,
-            controls: NoVideoControls,
-          ),
-          // Subtitle overlay
-          if (_subtitleText.isNotEmpty && _activeSubtitleTrack != null)
-            Positioned(
-              bottom: 60,
-              left: 20,
-              right: 20,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  _subtitleText,
-                  style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w500),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-        ],
+      return Video(
+        controller: _videoController!,
+        controls: NoVideoControls,
       );
     }
     return const SizedBox();

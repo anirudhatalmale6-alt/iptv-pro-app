@@ -244,16 +244,20 @@ class AppProvider extends ChangeNotifier {
         if (_allLiveStreams.isEmpty) {
           _allLiveStreams = await _service.getLiveStreams();
         }
+        if (_selectedLiveCategoryId != categoryId) return;
         _currentStreams = _allLiveStreams.where((s) => _favoriteStreamIds.contains(s.streamId)).toList();
       } else {
-        _currentStreams = await _service.getLiveStreams(categoryId: categoryId);
+        final results = await _service.getLiveStreams(categoryId: categoryId);
+        if (_selectedLiveCategoryId != categoryId) return;
+        _currentStreams = results;
         if (categoryId == null) {
-          _allLiveStreams = _currentStreams;
+          _allLiveStreams = results;
         }
       }
       _isLoadingLive = false;
       notifyListeners();
     } catch (e) {
+      if (_selectedLiveCategoryId != categoryId) return;
       _isLoadingLive = false;
       _liveError = 'Failed to load streams: $e';
       notifyListeners();
@@ -281,6 +285,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final results = await _service.getVodStreams(categoryId: categoryId);
+      if (_selectedVodCategoryId != categoryId) return;
       _currentVodStreams = results;
       if (categoryId == null) {
         _allVodStreams = results;
@@ -288,6 +293,7 @@ class AppProvider extends ChangeNotifier {
       _isLoadingVod = false;
       notifyListeners();
     } catch (e) {
+      if (_selectedVodCategoryId != categoryId) return;
       _isLoadingVod = false;
       _vodError = 'Failed to load movies: $e';
       notifyListeners();
@@ -341,6 +347,8 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final results = await _service.getSeries(categoryId: categoryId);
+      // Discard stale response if user switched categories while loading
+      if (_selectedSeriesCategoryId != categoryId) return;
       _currentSeries = results;
       if (categoryId == null) {
         _allSeries = results;
@@ -349,6 +357,8 @@ class AppProvider extends ChangeNotifier {
       _seriesError = null;
       notifyListeners();
     } catch (e) {
+      // Only apply error if this is still the active category
+      if (_selectedSeriesCategoryId != categoryId) return;
       _isLoadingSeries = false;
       _seriesError = 'Failed to load series: $e';
       debugPrint('Series load error: $e');
