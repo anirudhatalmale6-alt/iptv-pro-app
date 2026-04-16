@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -22,6 +23,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
   bool _showFavorites = false;
   List<VodStream> _searchResults = [];
   bool _isSearching = false;
+  Timer? _searchDebounce;
 
   @override
   void didChangeDependencies() {
@@ -47,14 +49,18 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _onSearchChanged(String query) {
     setState(() => _searchQuery = query);
+    _searchDebounce?.cancel();
     if (query.length >= 2) {
-      _performSearch(query);
+      _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+        _performSearch(query);
+      });
     } else {
       setState(() {
         _searchResults = [];
