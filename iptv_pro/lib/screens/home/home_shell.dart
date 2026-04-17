@@ -5,6 +5,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../config/theme.dart';
 import '../../providers/mini_player_provider.dart';
 import '../../providers/app_provider.dart';
+import '../../widgets/tv_focusable.dart';
 import '../home/home_screen.dart';
 import '../tv_guide/tv_guide_screen.dart';
 import '../movies/movies_screen.dart';
@@ -100,25 +101,24 @@ class _HomeShellState extends State<HomeShell> {
             final isActive = i == _currentIndex;
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => setState(() => _currentIndex = i),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isActive ? AppColors.red.withOpacity(0.15) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      tab.label,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        letterSpacing: 0.5,
-                        color: isActive ? AppColors.white : AppColors.whiteMuted,
-                      ),
+              child: TvFocusable(
+                autofocus: i == 0,
+                borderRadius: BorderRadius.circular(8),
+                focusColor: AppColors.red,
+                onTap: () => setState(() => _currentIndex = i),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isActive ? AppColors.red.withOpacity(0.15) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    tab.label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                      color: isActive ? AppColors.white : AppColors.whiteMuted,
                     ),
                   ),
                 ),

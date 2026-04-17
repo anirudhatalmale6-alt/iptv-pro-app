@@ -116,6 +116,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     // Server URL
                     TextFormField(
                       controller: _serverController,
+                      autofocus: true,
                       style: const TextStyle(color: AppColors.white),
                       decoration: const InputDecoration(
                         labelText: 'Server URL',

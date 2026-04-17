@@ -7,6 +7,7 @@ import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/mini_player_provider.dart';
+import '../../widgets/tv_focusable.dart';
 import '../player/player_screen.dart';
 import '../player/multi_view_screen.dart';
 
@@ -690,28 +691,27 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.red.withOpacity(0.15) : null,
-            border: Border(left: BorderSide(color: isSelected ? AppColors.red : Colors.transparent, width: 3)),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 16, color: iconColor),
-              const SizedBox(width: 10),
-              Expanded(child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? AppColors.white : AppColors.whiteDim))),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(8)),
-                child: Text('$count', style: const TextStyle(fontSize: 10, color: AppColors.whiteMuted)),
-              ),
-            ],
-          ),
+    return TvFocusable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      focusColor: AppColors.red,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.red.withOpacity(0.15) : null,
+          border: Border(left: BorderSide(color: isSelected ? AppColors.red : Colors.transparent, width: 3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: iconColor),
+            const SizedBox(width: 10),
+            Expanded(child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? AppColors.white : AppColors.whiteDim))),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(8)),
+              child: Text('$count', style: const TextStyle(fontSize: 10, color: AppColors.whiteMuted)),
+            ),
+          ],
         ),
       ),
     );
@@ -729,49 +729,47 @@ class _ChannelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isPlaying ? AppColors.red.withOpacity(0.15) : AppColors.bgCard,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: isPlaying ? AppColors.red.withOpacity(0.5) : Colors.white.withOpacity(0.04)),
-          ),
-          padding: const EdgeInsets.all(8),
-          child: Stack(
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: stream.streamIcon != null && stream.streamIcon!.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: stream.streamIcon!,
-                            fit: BoxFit.contain,
-                            fadeInDuration: const Duration(milliseconds: 200),
-                            placeholder: (_, __) => _buildInitialsPlaceholder(),
-                            errorWidget: (_, __, ___) => _buildInitialsPlaceholder(),
-                          )
-                        : _buildInitialsPlaceholder(),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(stream.name, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isPlaying ? Colors.white : null), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-                ],
-              ),
-              if (isFavorite)
-                const Positioned(top: 0, right: 0, child: Icon(Icons.star, color: AppColors.gold, size: 14)),
-              if (isPlaying)
-                Positioned(top: 0, left: 0, child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(color: AppColors.red, borderRadius: BorderRadius.circular(3)),
-                  child: const Text('NOW', style: TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.w800)),
-                )),
-            ],
-          ),
+    return TvFocusable(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(8),
+      focusColor: AppColors.red,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isPlaying ? AppColors.red.withOpacity(0.15) : AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isPlaying ? AppColors.red.withOpacity(0.5) : Colors.white.withOpacity(0.04)),
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Stack(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: stream.streamIcon != null && stream.streamIcon!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: stream.streamIcon!,
+                          fit: BoxFit.contain,
+                          fadeInDuration: const Duration(milliseconds: 100),
+                          placeholder: (_, __) => _buildInitialsPlaceholder(),
+                          errorWidget: (_, __, ___) => _buildInitialsPlaceholder(),
+                        )
+                      : _buildInitialsPlaceholder(),
+                ),
+                const SizedBox(height: 4),
+                Text(stream.name, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isPlaying ? Colors.white : null), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+              ],
+            ),
+            if (isFavorite)
+              const Positioned(top: 0, right: 0, child: Icon(Icons.star, color: AppColors.gold, size: 14)),
+            if (isPlaying)
+              Positioned(top: 0, left: 0, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(color: AppColors.red, borderRadius: BorderRadius.circular(3)),
+                child: const Text('NOW', style: TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.w800)),
+              )),
+          ],
         ),
       ),
     );
@@ -824,8 +822,10 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      focusColor: AppColors.red,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(color: AppColors.red.withOpacity(0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.red.withOpacity(0.3))),

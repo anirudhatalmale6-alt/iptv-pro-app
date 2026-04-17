@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
+import '../../widgets/tv_focusable.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
 import 'series_detail_screen.dart';
@@ -360,69 +361,67 @@ class _SeriesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: AppColors.bgCard,
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (series.cover != null && series.cover!.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(
-                          imageUrl: series.cover!,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(color: AppColors.bgCard, child: const Center(child: Icon(Icons.tv, color: AppColors.whiteMuted))),
-                          errorWidget: (_, __, ___) => Container(color: AppColors.bgCard, child: const Center(child: Icon(Icons.tv, color: AppColors.whiteMuted))),
-                        ),
-                      )
-                    else
-                      Container(color: AppColors.bgCard, child: const Center(child: Icon(Icons.tv, color: AppColors.whiteMuted, size: 32))),
-                    if (isFavorite)
-                      Positioned(
-                        bottom: 6,
-                        right: 6,
-                        child: Icon(Icons.bookmark, color: AppColors.red, size: 18),
+    return TvFocusable(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(8),
+      focusColor: AppColors.red,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.bgCard,
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (series.cover != null && series.cover!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: series.cover!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(color: AppColors.bgCard, child: const Center(child: Icon(Icons.tv, color: AppColors.whiteMuted))),
+                        errorWidget: (_, __, ___) => Container(color: AppColors.bgCard, child: const Center(child: Icon(Icons.tv, color: AppColors.whiteMuted))),
                       ),
-                    if (series.ratingValue > 0)
-                      Positioned(
-                        top: 6,
-                        right: 6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(4)),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star, color: AppColors.gold, size: 10),
-                              const SizedBox(width: 2),
-                              Text(series.ratingValue.toStringAsFixed(1), style: const TextStyle(color: AppColors.gold, fontSize: 9, fontWeight: FontWeight.w700)),
-                            ],
-                          ),
+                    )
+                  else
+                    Container(color: AppColors.bgCard, child: const Center(child: Icon(Icons.tv, color: AppColors.whiteMuted, size: 32))),
+                  if (isFavorite)
+                    Positioned(
+                      bottom: 6,
+                      right: 6,
+                      child: Icon(Icons.bookmark, color: AppColors.red, size: 18),
+                    ),
+                  if (series.ratingValue > 0)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(4)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star, color: AppColors.gold, size: 10),
+                            const SizedBox(width: 2),
+                            Text(series.ratingValue.toStringAsFixed(1), style: const TextStyle(color: AppColors.gold, fontSize: 9, fontWeight: FontWeight.w700)),
+                          ],
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            Text(series.name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
-            if (series.genre != null)
-              Text(series.genre!, style: const TextStyle(fontSize: 9, color: AppColors.whiteMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Text(series.name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+          if (series.genre != null)
+            Text(series.genre!, style: const TextStyle(fontSize: 9, color: AppColors.whiteMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ],
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
+import '../../widgets/tv_focusable.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
 import '../player/player_screen.dart';
@@ -318,13 +319,12 @@ class _MovieCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
+    return TvFocusable(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(8),
+      focusColor: AppColors.red,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Poster
@@ -438,7 +438,6 @@ class _MovieCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-        ),
       ),
     );
   }

@@ -8,11 +8,6 @@ class AppProvider extends ChangeNotifier {
   final XtreamService _service = XtreamService();
   XtreamService get service => _service;
 
-  // Category-level caches to avoid re-fetching on category switch
-  final Map<String, List<LiveStream>> _liveCache = {};
-  final Map<String, List<VodStream>> _vodCache = {};
-  final Map<String, List<SeriesItem>> _seriesCache = {};
-
   // Separate loading states per section
   bool _isLoadingLive = false;
   bool _isLoadingVod = false;
@@ -223,9 +218,6 @@ class AppProvider extends ChangeNotifier {
     _currentStreams = [];
     _currentVodStreams = [];
     _currentSeries = [];
-    _liveCache.clear();
-    _vodCache.clear();
-    _seriesCache.clear();
     _allLiveStreams = [];
     _allVodStreams = [];
     _allSeries = [];
@@ -247,24 +239,16 @@ class AppProvider extends ChangeNotifier {
   List<LiveStream> get allLiveStreams => _allLiveStreams;
 
   Future<void> loadLiveStreams(String? categoryId) async {
+    // Skip if already loading the same category
+    if (_selectedLiveCategoryId == categoryId && _isLoadingLive) return;
     _selectedLiveCategoryId = categoryId;
-    _liveError = null;
-
-    // Check cache first
-    final cacheKey = categoryId ?? '__all__';
-    if (cacheKey != '__favorites__' && _liveCache.containsKey(cacheKey)) {
-      _currentStreams = _liveCache[cacheKey]!;
-      notifyListeners();
-      return;
-    }
-
     _isLoadingLive = true;
+    _liveError = null;
     notifyListeners();
     try {
       if (categoryId == '__favorites__') {
         if (_allLiveStreams.isEmpty) {
           _allLiveStreams = await _service.getLiveStreams();
-          _liveCache['__all__'] = _allLiveStreams;
         }
         if (_selectedLiveCategoryId != categoryId) return;
         _currentStreams = _allLiveStreams.where((s) => _favoriteStreamIds.contains(s.streamId)).toList();
@@ -272,7 +256,6 @@ class AppProvider extends ChangeNotifier {
         final results = await _service.getLiveStreams(categoryId: categoryId);
         if (_selectedLiveCategoryId != categoryId) return;
         _currentStreams = results;
-        _liveCache[cacheKey] = results;
         if (categoryId == null) {
           _allLiveStreams = results;
         }
@@ -302,24 +285,15 @@ class AppProvider extends ChangeNotifier {
   List<VodStream> get allVodStreams => _allVodStreams;
 
   Future<void> loadVodStreams(String? categoryId) async {
+    if (_selectedVodCategoryId == categoryId && _isLoadingVod) return;
     _selectedVodCategoryId = categoryId;
-    _vodError = null;
-
-    // Check cache first
-    final cacheKey = categoryId ?? '__all__';
-    if (_vodCache.containsKey(cacheKey)) {
-      _currentVodStreams = _vodCache[cacheKey]!;
-      notifyListeners();
-      return;
-    }
-
     _isLoadingVod = true;
+    _vodError = null;
     notifyListeners();
     try {
       final results = await _service.getVodStreams(categoryId: categoryId);
       if (_selectedVodCategoryId != categoryId) return;
       _currentVodStreams = results;
-      _vodCache[cacheKey] = results;
       if (categoryId == null) {
         _allVodStreams = results;
       }
@@ -372,25 +346,16 @@ class AppProvider extends ChangeNotifier {
   List<SeriesItem> get allSeries => _allSeries;
 
   Future<void> loadSeries(String? categoryId) async {
+    if (_selectedSeriesCategoryId == categoryId && _isLoadingSeries) return;
     _selectedSeriesCategoryId = categoryId;
-    _seriesError = null;
-
-    // Check cache first
-    final cacheKey = categoryId ?? '__all__';
-    if (_seriesCache.containsKey(cacheKey)) {
-      _currentSeries = _seriesCache[cacheKey]!;
-      notifyListeners();
-      return;
-    }
-
     _isLoadingSeries = true;
+    _seriesError = null;
     _currentSeries = [];
     notifyListeners();
     try {
       final results = await _service.getSeries(categoryId: categoryId);
       if (_selectedSeriesCategoryId != categoryId) return;
       _currentSeries = results;
-      _seriesCache[cacheKey] = results;
       if (categoryId == null) {
         _allSeries = results;
       }
