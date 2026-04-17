@@ -21,6 +21,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
+  // Focus nodes for TV D-pad navigation
+  final _serverFocus = FocusNode();
+  final _usernameFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _connectFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +76,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _serverController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _serverFocus.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
+    _connectFocus.dispose();
     super.dispose();
   }
 
@@ -88,101 +98,132 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             padding: const EdgeInsets.all(24),
             child: Container(
               constraints: BoxConstraints(maxWidth: isTV ? 480 : 400),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Logo
-                    Image.asset(
-                      'assets/images/veltrix_logo.png',
-                      height: 80,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Text(
-                        'VELTRIX TV',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Connect to your IPTV service',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 40),
-
-                    // Server URL
-                    TextFormField(
-                      controller: _serverController,
-                      autofocus: true,
-                      style: const TextStyle(color: AppColors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'Server URL',
-                        hintText: 'http://example.com:port',
-                        prefixIcon: Icon(Icons.dns_outlined, color: AppColors.whiteMuted),
-                      ),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Username
-                    TextFormField(
-                      controller: _usernameController,
-                      style: const TextStyle(color: AppColors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: Icon(Icons.person_outline, color: AppColors.whiteMuted),
-                      ),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Password
-                    TextFormField(
-                      controller: _passwordController,
-                      style: const TextStyle(color: AppColors.white),
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.whiteMuted),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: AppColors.whiteMuted,
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Logo
+                      Image.asset(
+                        'assets/images/veltrix_logo.png',
+                        height: 80,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Text(
+                          'VELTRIX TV',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
                         ),
                       ),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-                      onFieldSubmitted: (_) => _login(),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Login button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: provider.isLoading ? null : _login,
-                        child: provider.isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                              )
-                            : const Text('CONNECT', style: TextStyle(letterSpacing: 1.5)),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Connect to your IPTV service',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Enter your Xtream Codes credentials',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                      const SizedBox(height: 40),
+
+                      // Server URL
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(1),
+                        child: TextFormField(
+                          controller: _serverController,
+                          focusNode: _serverFocus,
+                          autofocus: true,
+                          style: const TextStyle(color: AppColors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Server URL',
+                            hintText: 'http://example.com:port',
+                            prefixIcon: Icon(Icons.dns_outlined, color: AppColors.whiteMuted),
+                          ),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _usernameFocus.requestFocus(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Username
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(2),
+                        child: TextFormField(
+                          controller: _usernameController,
+                          focusNode: _usernameFocus,
+                          style: const TextStyle(color: AppColors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Username',
+                            prefixIcon: Icon(Icons.person_outline, color: AppColors.whiteMuted),
+                          ),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Password
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(3),
+                        child: TextFormField(
+                          controller: _passwordController,
+                          focusNode: _passwordFocus,
+                          style: const TextStyle(color: AppColors.white),
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock_outline, color: AppColors.whiteMuted),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                color: AppColors.whiteMuted,
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                          ),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                          onFieldSubmitted: (_) => _connectFocus.requestFocus(),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Login button
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(4),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            focusNode: _connectFocus,
+                            onPressed: provider.isLoading ? null : _login,
+                            child: provider.isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : const Text('CONNECT', style: TextStyle(letterSpacing: 1.5)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Enter your Xtream Codes credentials',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (isTV) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Use arrow keys to navigate, OK to select\nConnect a USB keyboard for easier typing',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.whiteMuted,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),

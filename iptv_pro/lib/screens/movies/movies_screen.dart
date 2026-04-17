@@ -268,8 +268,10 @@ class _MoviesScreenState extends State<MoviesScreen> {
   Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap, {IconData? icon}) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
+      child: TvFocusable(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        focusColor: AppColors.red,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
