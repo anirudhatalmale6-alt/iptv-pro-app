@@ -21,11 +21,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
-  // Focus nodes for TV D-pad navigation
+  // Track which field is focused for TV D-pad
+  int _focusedIndex = 0; // 0=server, 1=username, 2=password, 3=connect
   final _serverFocus = FocusNode();
   final _usernameFocus = FocusNode();
   final _passwordFocus = FocusNode();
   final _connectFocus = FocusNode();
+  final _rootFocus = FocusNode();
+
+  List<FocusNode> get _focusNodes => [_serverFocus, _usernameFocus, _passwordFocus, _connectFocus];
 
   @override
   void initState() {
@@ -34,6 +38,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
     _tryAutoLogin();
+
+    // Auto-focus server field after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _serverFocus.requestFocus();
+    });
   }
 
   Future<void> _tryAutoLogin() async {
@@ -70,6 +79,49 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
   }
 
+  void _moveFocus(int direction) {
+    setState(() {
+      _focusedIndex = (_focusedIndex + direction).clamp(0, 3);
+    });
+    _focusNodes[_focusedIndex].requestFocus();
+  }
+
+  void _handleSelect() {
+    if (_focusedIndex == 3) {
+      // Connect button
+      _login();
+    }
+    // For text fields (0-2), pressing OK should let the system handle it
+    // (opens keyboard on most TVs)
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _moveFocus(1);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.arrowUp) {
+      _moveFocus(-1);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.select ||
+               key == LogicalKeyboardKey.enter ||
+               key == LogicalKeyboardKey.gameButtonA) {
+      if (_focusedIndex == 3) {
+        _handleSelect();
+        return KeyEventResult.handled;
+      }
+      // Let text fields handle their own select/enter (opens keyboard)
+      return KeyEventResult.ignored;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
   @override
   void dispose() {
     _animController.dispose();
@@ -80,6 +132,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _usernameFocus.dispose();
     _passwordFocus.dispose();
     _connectFocus.dispose();
+    _rootFocus.dispose();
     super.dispose();
   }
 
@@ -91,15 +144,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
     return Scaffold(
       backgroundColor: AppColors.bgDeep,
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Container(
-              constraints: BoxConstraints(maxWidth: isTV ? 480 : 400),
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
+      body: Focus(
+        focusNode: _rootFocus,
+        onKeyEvent: _handleKeyEvent,
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Container(
+                constraints: BoxConstraints(maxWidth: isTV ? 480 : 400),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -126,12 +180,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       const SizedBox(height: 40),
 
                       // Server URL
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(1),
+                      _buildFocusableField(
+                        index: 0,
                         child: TextFormField(
                           controller: _serverController,
                           focusNode: _serverFocus,
-                          autofocus: true,
                           style: const TextStyle(color: AppColors.white),
                           decoration: const InputDecoration(
                             labelText: 'Server URL',
@@ -140,14 +193,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                           textInputAction: TextInputAction.next,
-                          onFieldSubmitted: (_) => _usernameFocus.requestFocus(),
+                          onFieldSubmitted: (_) => _moveFocus(1),
                         ),
                       ),
                       const SizedBox(height: 16),
 
                       // Username
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(2),
+                      _buildFocusableField(
+                        index: 1,
                         child: TextFormField(
                           controller: _usernameController,
                           focusNode: _usernameFocus,
@@ -158,14 +211,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                           textInputAction: TextInputAction.next,
-                          onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
+                          onFieldSubmitted: (_) => _moveFocus(1),
                         ),
                       ),
                       const SizedBox(height: 16),
 
                       // Password
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(3),
+                      _buildFocusableField(
+                        index: 2,
                         child: TextFormField(
                           controller: _passwordController,
                           focusNode: _passwordFocus,
@@ -183,14 +236,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             ),
                           ),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-                          onFieldSubmitted: (_) => _connectFocus.requestFocus(),
+                          onFieldSubmitted: (_) => _moveFocus(1),
                         ),
                       ),
                       const SizedBox(height: 28),
 
                       // Login button
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(4),
+                      _buildFocusableField(
+                        index: 3,
                         child: SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -215,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       if (isTV) ...[
                         const SizedBox(height: 16),
                         Text(
-                          'Use arrow keys to navigate, OK to select\nConnect a USB keyboard for easier typing',
+                          'Use UP/DOWN arrows to navigate between fields\nPress OK to type, press OK on CONNECT to login',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.whiteMuted,
                           ),
@@ -230,6 +283,23 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFocusableField({required int index, required Widget child}) {
+    final isFocused = _focusedIndex == index;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: isFocused
+            ? Border.all(color: AppColors.red, width: 2.5)
+            : Border.all(color: Colors.transparent, width: 2.5),
+        boxShadow: isFocused
+            ? [BoxShadow(color: AppColors.red.withOpacity(0.3), blurRadius: 12)]
+            : [],
+      ),
+      child: child,
     );
   }
 }
