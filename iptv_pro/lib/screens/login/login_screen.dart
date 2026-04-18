@@ -29,6 +29,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _connectFocus = FocusNode();
   final _rootFocus = FocusNode();
 
+  // Debug: show what key events Flutter receives on TV
+  String _debugLastKey = 'No key pressed yet';
+  int _debugKeyCount = 0;
+
   List<FocusNode> get _focusNodes => [_serverFocus, _usernameFocus, _passwordFocus, _connectFocus];
 
   @override
@@ -91,11 +95,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       // Connect button
       _login();
     }
-    // For text fields (0-2), pressing OK should let the system handle it
-    // (opens keyboard on most TVs)
+    // For text fields (0-2), ENTER goes through Flutter's normal handling
+    // which opens the on-screen keyboard
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    // Debug: log ALL key events so we can see what the TV sends
+    if (event is KeyDownEvent) {
+      setState(() {
+        _debugKeyCount++;
+        _debugLastKey = '#$_debugKeyCount: ${event.logicalKey.keyLabel} (id:${event.logicalKey.keyId}) focused:$_focusedIndex';
+      });
+    }
+
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
@@ -144,9 +156,28 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
     return Scaffold(
       backgroundColor: AppColors.bgDeep,
-      body: Focus(
+      body: KeyboardListener(
         focusNode: _rootFocus,
-        onKeyEvent: _handleKeyEvent,
+        onKeyEvent: (event) {
+          // Backup key detection - fires even if Focus.onKeyEvent doesn't
+          if (event is KeyDownEvent) {
+            setState(() {
+              _debugKeyCount++;
+              _debugLastKey = '#$_debugKeyCount: ${event.logicalKey.keyLabel} (id:${event.logicalKey.keyId}) focused:$_focusedIndex';
+            });
+            // Handle navigation
+            final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.arrowDown) {
+              _moveFocus(1);
+            } else if (key == LogicalKeyboardKey.arrowUp) {
+              _moveFocus(-1);
+            } else if ((key == LogicalKeyboardKey.select ||
+                       key == LogicalKeyboardKey.enter ||
+                       key == LogicalKeyboardKey.gameButtonA) && _focusedIndex == 3) {
+              _login();
+            }
+          }
+        },
         child: FadeTransition(
           opacity: _fadeAnim,
           child: Center(
@@ -223,11 +254,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           controller: _passwordController,
                           focusNode: _passwordFocus,
                           style: const TextStyle(color: AppColors.white),
-                          obscureText: _obscurePassword,
+                          obscureText: MediaQuery.of(context).size.width > 700 ? false : _obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'Password',
                             prefixIcon: const Icon(Icons.lock_outline, color: AppColors.whiteMuted),
-                            suffixIcon: IconButton(
+                            suffixIcon: MediaQuery.of(context).size.width > 700 ? null : IconButton(
                               icon: Icon(
                                 _obscurePassword ? Icons.visibility_off : Icons.visibility,
                                 color: AppColors.whiteMuted,
@@ -275,6 +306,23 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           textAlign: TextAlign.center,
                         ),
                       ],
+                      // Debug: show key events received from TV remote
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.yellow.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.yellow.withOpacity(0.5)),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text('DEBUG - Remote Button Log:', style: TextStyle(color: Colors.yellow, fontSize: 11, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            Text(_debugLastKey, style: const TextStyle(color: Colors.white, fontSize: 12), textAlign: TextAlign.center),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),

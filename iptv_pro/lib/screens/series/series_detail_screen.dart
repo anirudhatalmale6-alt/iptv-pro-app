@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
 import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
+import '../../services/tv_dpad_service.dart';
+import '../../widgets/tv_focusable.dart';
 import '../player/player_screen.dart';
 
 class SeriesDetailScreen extends StatefulWidget {
@@ -54,7 +57,9 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _loading
+      body: Focus(
+        onKeyEvent: _handleDpadKeyEvent,
+        child: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.red))
           : _info == null
               ? const Center(child: Text('Failed to load series info', style: TextStyle(color: AppColors.whiteMuted)))
@@ -145,8 +150,10 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
                                 final isSelected = season == _selectedSeason;
                                 return Padding(
                                   padding: const EdgeInsets.only(right: 8),
-                                  child: GestureDetector(
+                                  child: TvFocusable(
                                     onTap: () => setState(() => _selectedSeason = season),
+                                    borderRadius: BorderRadius.circular(6),
+                                    focusColor: AppColors.red,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                       decoration: BoxDecoration(
@@ -199,7 +206,38 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
                       ),
                   ],
                 ),
+      ),
     );
+  }
+
+  KeyEventResult _handleDpadKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return KeyEventResult.ignored;
+
+    if (key == LogicalKeyboardKey.arrowUp) {
+      primaryFocus.focusInDirection(TraversalDirection.up);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      primaryFocus.focusInDirection(TraversalDirection.down);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.arrowLeft) {
+      primaryFocus.focusInDirection(TraversalDirection.left);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      primaryFocus.focusInDirection(TraversalDirection.right);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.select ||
+               key == LogicalKeyboardKey.enter ||
+               key == LogicalKeyboardKey.gameButtonA) {
+      if (TvDpadService.onSelect != null) {
+        TvDpadService.onSelect!();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.ignored;
   }
 }
 
@@ -211,60 +249,59 @@ class _EpisodeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.03))),
-          ),
-          child: Row(
-            children: [
-              // Episode number
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(8),
+    return TvFocusable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      focusColor: AppColors.red,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.03))),
+        ),
+        child: Row(
+          children: [
+            // Episode number
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  '${episode.episodeNum ?? '?'}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.red),
                 ),
-                child: Center(
-                  child: Text(
-                    '${episode.episodeNum ?? '?'}',
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.red),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    episode.title ?? 'Episode ${episode.episodeNum}',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      episode.title ?? 'Episode ${episode.episodeNum}',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  if (episode.plot != null && episode.plot!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(episode.plot!, style: const TextStyle(color: AppColors.whiteMuted, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
                     ),
-                    if (episode.plot != null && episode.plot!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(episode.plot!, style: const TextStyle(color: AppColors.whiteMuted, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
-                      ),
-                    if (episode.duration != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(episode.duration!, style: const TextStyle(color: AppColors.whiteMuted, fontSize: 10)),
-                      ),
-                  ],
-                ),
+                  if (episode.duration != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(episode.duration!, style: const TextStyle(color: AppColors.whiteMuted, fontSize: 10)),
+                    ),
+                ],
               ),
-              const Icon(Icons.play_circle_outline, color: AppColors.red, size: 28),
-            ],
-          ),
+            ),
+            const Icon(Icons.play_circle_outline, color: AppColors.red, size: 28),
+          ],
         ),
       ),
     );

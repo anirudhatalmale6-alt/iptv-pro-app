@@ -9,6 +9,11 @@ import '../../providers/app_provider.dart';
 import '../player/player_screen.dart';
 import 'movie_detail_sheet.dart';
 
+/// Strip emoji and non-ASCII characters that TV fonts can't render
+String _cleanMovieText(String text) {
+  return text.replaceAll(RegExp(r'[^\x20-\x7E\xA0-\xFF]'), '').trim();
+}
+
 class MoviesScreen extends StatefulWidget {
   const MoviesScreen({super.key});
 
@@ -170,7 +175,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                         }
                         final cat = provider.vodCategories[index - 2];
                         return _buildCategoryChip(
-                          cat.categoryName,
+                          _cleanMovieText(cat.categoryName),
                           !_showFavorites && _selectedCategoryId == cat.categoryId,
                           () {
                             setState(() {
@@ -345,6 +350,7 @@ class _MovieCard extends StatelessWidget {
                         child: CachedNetworkImage(
                           imageUrl: movie.streamIcon!,
                           fit: BoxFit.cover,
+                          filterQuality: FilterQuality.high,
                           placeholder: (_, __) => Container(
                             color: AppColors.bgCard,
                             child: const Center(child: Icon(Icons.movie, color: AppColors.whiteMuted)),

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../config/theme.dart';
 import '../../providers/app_provider.dart';
+import '../../widgets/tv_focusable.dart';
 import '../login/login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -66,23 +67,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ...sections.map((s) {
             final isSelected = s.$1 == _selectedSection;
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => setState(() => _selectedSection = s.$1),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.red.withOpacity(0.15) : null,
-                    border: Border(left: BorderSide(color: isSelected ? AppColors.red : Colors.transparent, width: 3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(s.$2, size: 18, color: isSelected ? AppColors.white : AppColors.whiteDim),
-                      const SizedBox(width: 12),
-                      Text(s.$1, style: TextStyle(fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? AppColors.white : AppColors.whiteDim)),
-                    ],
-                  ),
+            return TvFocusable(
+              onTap: () => setState(() => _selectedSection = s.$1),
+              borderRadius: BorderRadius.circular(4),
+              focusColor: AppColors.red,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.red.withOpacity(0.15) : null,
+                  border: Border(left: BorderSide(color: isSelected ? AppColors.red : Colors.transparent, width: 3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(s.$2, size: 18, color: isSelected ? AppColors.white : AppColors.whiteDim),
+                    const SizedBox(width: 12),
+                    Text(s.$1, style: TextStyle(fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? AppColors.white : AppColors.whiteDim)),
+                  ],
                 ),
               ),
             );

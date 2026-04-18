@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
+import '../../widgets/tv_focusable.dart';
 import '../player/player_screen.dart';
 
 class TvGuideScreen extends StatefulWidget {
@@ -131,7 +132,7 @@ class _TvGuideScreenState extends State<TvGuideScreen> {
                       final isSelected = _selectedCategoryId == cat.categoryId;
                       return Padding(
                         padding: const EdgeInsets.only(right: 6),
-                        child: GestureDetector(
+                        child: TvFocusable(
                           onTap: () {
                             setState(() {
                               _selectedCategoryId = cat.categoryId;
@@ -139,6 +140,8 @@ class _TvGuideScreenState extends State<TvGuideScreen> {
                             });
                             _loadChannels();
                           },
+                          borderRadius: BorderRadius.circular(16),
+                          focusColor: AppColors.red,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                             decoration: BoxDecoration(
@@ -236,18 +239,18 @@ class _EpgRow extends StatelessWidget {
     final currentEpg = epgEntries.where((e) => e.isCurrentlyAiring).toList();
     final upcomingEpg = epgEntries.where((e) => e.isUpcoming).take(2).toList();
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.03))),
-          ),
-          child: Row(
-            children: [
-              // Channel info
+    return TvFocusable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      focusColor: AppColors.red,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.03))),
+        ),
+        child: Row(
+          children: [
+            // Channel info
               SizedBox(
                 width: 130,
                 child: Row(
@@ -386,7 +389,6 @@ class _EpgRow extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }

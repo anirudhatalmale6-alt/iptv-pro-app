@@ -8,6 +8,11 @@ import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
 import 'series_detail_screen.dart';
 
+/// Strip emoji and non-ASCII characters that TV fonts can't render
+String _cleanSeriesText(String text) {
+  return text.replaceAll(RegExp(r'[^\x20-\x7E\xA0-\xFF]'), '').trim();
+}
+
 class SeriesScreen extends StatefulWidget {
   const SeriesScreen({super.key});
 
@@ -183,7 +188,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
                           });
                         }
                         final cat = provider.seriesCategories[index - 2];
-                        return _buildChip(cat.categoryName, !_showFavorites && _selectedCategoryId == cat.categoryId, () async {
+                        return _buildChip(_cleanSeriesText(cat.categoryName), !_showFavorites && _selectedCategoryId == cat.categoryId, () async {
                           debugPrint('Series chip tapped: ${cat.categoryId} - ${cat.categoryName}');
                           setState(() {
                             _selectedCategoryId = cat.categoryId;
@@ -326,8 +331,10 @@ class _SeriesScreenState extends State<SeriesScreen> {
   Widget _buildChip(String label, bool isSelected, VoidCallback onTap, {IconData? icon}) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
+      child: TvFocusable(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        focusColor: AppColors.red,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(

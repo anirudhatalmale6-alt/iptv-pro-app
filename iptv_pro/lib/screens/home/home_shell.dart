@@ -5,6 +5,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../config/theme.dart';
 import '../../providers/mini_player_provider.dart';
 import '../../providers/app_provider.dart';
+import '../../services/tv_dpad_service.dart';
 import '../../widgets/tv_focusable.dart';
 import '../home/home_screen.dart';
 import '../tv_guide/tv_guide_screen.dart';
@@ -22,6 +23,145 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
+  final List<FocusNode> _tabFocusNodes = List.generate(5, (_) => FocusNode());
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) _tabFocusNodes[0].requestFocus();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final node in _tabFocusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Check if current focus is on a tab button in the top bar
+  bool _isFocusOnTab() {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null) return false;
+    for (final tabNode in _tabFocusNodes) {
+      if (focus == tabNode) return true;
+      // Check if focus is a descendant of a tab node
+      FocusNode? parent = focus.parent;
+      while (parent != null) {
+        if (parent == tabNode) return true;
+        parent = parent.parent;
+      }
+    }
+    return false;
+  }
+
+  /// Get which tab index is currently focused
+  int _focusedTabIndex() {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null) return _currentIndex;
+    for (int i = 0; i < _tabFocusNodes.length; i++) {
+      if (focus == _tabFocusNodes[i]) return i;
+      FocusNode? parent = focus.parent;
+      while (parent != null) {
+        if (parent == _tabFocusNodes[i]) return i;
+        parent = parent.parent;
+      }
+    }
+    return _currentIndex;
+  }
+
+  /// Root D-pad handler with zone-aware navigation.
+  /// Tab bar zone: LEFT/RIGHT switch tabs, DOWN enters content.
+  /// Content zone: spatial navigation, UP at top returns to tab bar.
+  KeyEventResult _handleDpadKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    final key = event.logicalKey;
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    final onTab = _isFocusOnTab();
+
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (onTab) {
+        final idx = _focusedTabIndex();
+        if (idx > 0) _tabFocusNodes[idx - 1].requestFocus();
+        return KeyEventResult.handled;
+      }
+      _moveFocusInDirection(primaryFocus, TraversalDirection.left);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      if (onTab) {
+        final idx = _focusedTabIndex();
+        if (idx < _tabFocusNodes.length - 1) _tabFocusNodes[idx + 1].requestFocus();
+        return KeyEventResult.handled;
+      }
+      _moveFocusInDirection(primaryFocus, TraversalDirection.right);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      if (onTab) {
+        // Select the focused tab, then move focus to content
+        final idx = _focusedTabIndex();
+        if (idx != _currentIndex) {
+          setState(() => _currentIndex = idx);
+        }
+        // Jump to first focusable in content area
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) primaryFocus?.nextFocus();
+        });
+        return KeyEventResult.handled;
+      }
+      _moveFocusInDirection(primaryFocus, TraversalDirection.down);
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.arrowUp) {
+      if (onTab) {
+        return KeyEventResult.handled; // Already on tab bar, nowhere to go
+      }
+      // Try spatial up first
+      final moved = primaryFocus?.focusInDirection(TraversalDirection.up) ?? false;
+      if (!moved) {
+        // At top of content — return to tab bar
+        _tabFocusNodes[_currentIndex].requestFocus();
+      }
+      return KeyEventResult.handled;
+    } else if (key == LogicalKeyboardKey.select ||
+               key == LogicalKeyboardKey.enter ||
+               key == LogicalKeyboardKey.gameButtonA) {
+      if (onTab) {
+        // Select the focused tab
+        final idx = _focusedTabIndex();
+        if (idx != _currentIndex) {
+          setState(() => _currentIndex = idx);
+        }
+        return KeyEventResult.handled;
+      }
+      if (TvDpadService.onSelect != null) {
+        TvDpadService.onSelect!();
+        return KeyEventResult.handled;
+      }
+      // No TvFocusable focused (e.g. text field) — let Flutter handle normally
+      return KeyEventResult.ignored;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _moveFocusInDirection(FocusNode? current, TraversalDirection direction) {
+    if (current == null || current.context == null) {
+      _tabFocusNodes[_currentIndex].requestFocus();
+      return;
+    }
+    final moved = current.focusInDirection(direction);
+    if (!moved) {
+      if (direction == TraversalDirection.down || direction == TraversalDirection.right) {
+        current.nextFocus();
+      } else {
+        current.previousFocus();
+      }
+    }
+  }
 
   final _screens = const [
     HomeScreen(),
@@ -46,22 +186,36 @@ class _HomeShellState extends State<HomeShell> {
 
     return Scaffold(
       backgroundColor: AppColors.bgDeep,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              if (isWide) _buildTopBar(),
-              Expanded(
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: _screens,
+      body: Focus(
+        onKeyEvent: _handleDpadKeyEvent,
+        child: FocusTraversalGroup(
+        policy: WidgetOrderTraversalPolicy(),
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                if (isWide) _buildTopBar(),
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      for (int i = 0; i < _screens.length; i++)
+                        Focus(
+                          canRequestFocus: i == _currentIndex,
+                          descendantsAreFocusable: i == _currentIndex,
+                          descendantsAreTraversable: i == _currentIndex,
+                          child: _screens[i],
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           // Mini player overlay (hidden on HOME tab - split-screen handles it there)
           if (_currentIndex != 0) _MiniPlayerOverlay(),
-        ],
+          ],
+        ),
+      ),
       ),
       bottomNavigationBar: isWide
           ? null
@@ -103,6 +257,7 @@ class _HomeShellState extends State<HomeShell> {
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: TvFocusable(
                 autofocus: i == 0,
+                focusNode: _tabFocusNodes[i],
                 borderRadius: BorderRadius.circular(8),
                 focusColor: AppColors.red,
                 onTap: () => setState(() => _currentIndex = i),

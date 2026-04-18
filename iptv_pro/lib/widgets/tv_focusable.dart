@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/tv_dpad_service.dart';
 
 /// A wrapper widget that makes any child focusable via D-pad on Android TV.
 /// Shows a highlight border when focused, and triggers onTap on ENTER/SELECT.
+///
+/// D-pad arrow navigation is handled by the root Focus handler in HomeShell
+/// (or similar parent) using focusInDirection(). This widget only handles
+/// SELECT/ENTER key events and provides visual focus feedback.
 class TvFocusable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -43,18 +48,6 @@ class _TvFocusableState extends State<TvFocusable> {
     super.dispose();
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.select ||
-          event.logicalKey == LogicalKeyboardKey.enter ||
-          event.logicalKey == LogicalKeyboardKey.gameButtonA) {
-        widget.onTap?.call();
-        return KeyEventResult.handled;
-      }
-    }
-    return KeyEventResult.ignored;
-  }
-
   @override
   Widget build(BuildContext context) {
     final radius = widget.borderRadius ?? BorderRadius.circular(8);
@@ -63,8 +56,28 @@ class _TvFocusableState extends State<TvFocusable> {
     return Focus(
       focusNode: _focusNode,
       autofocus: widget.autofocus,
-      onKeyEvent: _handleKeyEvent,
-      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      onFocusChange: (focused) {
+        setState(() => _isFocused = focused);
+        if (focused) {
+          // Register this widget's onTap as the current SELECT action
+          TvDpadService.onSelect = widget.onTap;
+          // Auto-scroll into view when focused via D-pad
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && context.mounted) {
+              Scrollable.ensureVisible(
+                context,
+                alignment: 0.5,
+                duration: const Duration(milliseconds: 200),
+              );
+            }
+          });
+        } else {
+          // Clear stale callback when this widget loses focus
+          if (TvDpadService.onSelect == widget.onTap) {
+            TvDpadService.onSelect = null;
+          }
+        }
+      },
       child: GestureDetector(
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,

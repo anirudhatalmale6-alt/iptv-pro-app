@@ -11,6 +11,12 @@ import '../../widgets/tv_focusable.dart';
 import '../player/player_screen.dart';
 import '../player/multi_view_screen.dart';
 
+/// Strip emoji and non-ASCII characters that TV fonts can't render
+String _cleanText(String text) {
+  // Remove emoji, symbols, and other non-basic characters
+  return text.replaceAll(RegExp(r'[^\x20-\x7E\xA0-\xFF]'), '').trim();
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -195,8 +201,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _miniControl(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      focusColor: AppColors.red,
       child: Container(
         width: 28, height: 28,
         decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
@@ -314,8 +322,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 final isSelected = cat.categoryId == provider.selectedLiveCategoryId;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
+                  child: TvFocusable(
                     onTap: () => provider.loadLiveStreams(cat.categoryId),
+                    borderRadius: BorderRadius.circular(20),
+                    focusColor: AppColors.red,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
@@ -324,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         border: Border.all(color: isSelected ? AppColors.red : Colors.white10),
                       ),
                       child: Center(
-                        child: Text(cat.categoryName, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.whiteDim)),
+                        child: Text(_cleanText(cat.categoryName), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.whiteDim)),
                       ),
                     ),
                   ),
@@ -398,22 +408,21 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final cat = provider.liveCategories[index];
                 final isSelected = cat.categoryId == provider.selectedLiveCategoryId;
-                return Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => provider.loadLiveStreams(cat.categoryId),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.red.withOpacity(0.15) : null,
-                        border: Border(left: BorderSide(color: isSelected ? AppColors.red : Colors.transparent, width: 3)),
-                      ),
-                      child: Text(
-                        cat.categoryName,
-                        style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? AppColors.white : AppColors.whiteDim),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                return TvFocusable(
+                  onTap: () => provider.loadLiveStreams(cat.categoryId),
+                  borderRadius: BorderRadius.circular(4),
+                  focusColor: AppColors.red,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.red.withOpacity(0.15) : null,
+                      border: Border(left: BorderSide(color: isSelected ? AppColors.red : Colors.transparent, width: 3)),
+                    ),
+                    child: Text(
+                      _cleanText(cat.categoryName),
+                      style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? AppColors.white : AppColors.whiteDim),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 );
@@ -491,8 +500,10 @@ class _HomeScreenState extends State<HomeScreen> {
               if (streams.length >= 2)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: GestureDetector(
+                  child: TvFocusable(
                     onTap: () => _openMultiView(streams),
+                    borderRadius: BorderRadius.circular(8),
+                    focusColor: AppColors.red,
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(8)),
@@ -515,8 +526,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 final isSelected = cat.categoryId == provider.selectedLiveCategoryId;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
+                  child: TvFocusable(
                     onTap: () => provider.loadLiveStreams(cat.categoryId),
+                    borderRadius: BorderRadius.circular(20),
+                    focusColor: AppColors.red,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
@@ -525,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         border: Border.all(color: isSelected ? AppColors.red : Colors.white10),
                       ),
                       child: Center(
-                        child: Text(cat.categoryName, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.whiteDim)),
+                        child: Text(_cleanText(cat.categoryName), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.whiteDim)),
                       ),
                     ),
                   ),
@@ -548,8 +561,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFeaturedArea(AppProvider provider, LiveStream stream) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: () => _playLive(provider, stream),
+      borderRadius: BorderRadius.circular(12),
+      focusColor: AppColors.red,
       child: Container(
         height: 160,
         decoration: BoxDecoration(
@@ -586,7 +601,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
                   gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withOpacity(0.85)]),
                 ),
-                child: Text(stream.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                child: Text(_cleanText(stream.name), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               ),
             ),
           ],
@@ -752,13 +767,16 @@ class _ChannelCard extends StatelessWidget {
                           imageUrl: stream.streamIcon!,
                           fit: BoxFit.contain,
                           fadeInDuration: const Duration(milliseconds: 100),
+                          filterQuality: FilterQuality.high,
+                          maxWidthDiskCache: 400,
+                          maxHeightDiskCache: 400,
                           placeholder: (_, __) => _buildInitialsPlaceholder(),
                           errorWidget: (_, __, ___) => _buildInitialsPlaceholder(),
                         )
                       : _buildInitialsPlaceholder(),
                 ),
                 const SizedBox(height: 4),
-                Text(stream.name, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isPlaying ? Colors.white : null), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+                Text(_cleanText(stream.name), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isPlaying ? Colors.white : null), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
               ],
             ),
             if (isFavorite)
