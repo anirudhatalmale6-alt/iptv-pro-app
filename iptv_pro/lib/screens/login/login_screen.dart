@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/app_provider.dart';
 import '../home/home_shell.dart';
+import '../tv/tv_home.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -58,8 +59,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _navigateToHome() {
+    // Use TV layout on wide screens (Android TV, tablets in landscape)
+    final isTV = MediaQuery.of(context).size.shortestSide > 600 ||
+        MediaQuery.of(context).size.width > 960;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeShell()),
+      MaterialPageRoute(builder: (_) => isTV ? const TvHome() : const HomeShell()),
     );
   }
 

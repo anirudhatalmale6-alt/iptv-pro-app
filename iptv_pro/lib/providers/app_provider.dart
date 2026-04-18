@@ -194,6 +194,33 @@ class AppProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Failed to load series categories: $e');
     }
+
+    // Pre-load all streams in background for fast favorites access
+    _preloadAllStreams();
+  }
+
+  Future<void> _preloadAllStreams() async {
+    try {
+      if (_allLiveStreams.isEmpty) {
+        _allLiveStreams = await _service.getLiveStreams();
+      }
+    } catch (e) {
+      debugPrint('Background preload live: $e');
+    }
+    try {
+      if (_allVodStreams.isEmpty) {
+        _allVodStreams = await _service.getVodStreams();
+      }
+    } catch (e) {
+      debugPrint('Background preload vod: $e');
+    }
+    try {
+      if (_allSeries.isEmpty) {
+        _allSeries = await _service.getSeries();
+      }
+    } catch (e) {
+      debugPrint('Background preload series: $e');
+    }
   }
 
   Future<bool> tryAutoLogin() async {
