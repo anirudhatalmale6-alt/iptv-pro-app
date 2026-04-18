@@ -102,15 +102,20 @@ class _HomeShellState extends State<HomeShell> {
       return KeyEventResult.handled;
     } else if (key == LogicalKeyboardKey.arrowDown) {
       if (onTab) {
-        // Select the focused tab, then move focus to content
+        // Select the focused tab, then move focus to content via spatial nav
         final idx = _focusedTabIndex();
         if (idx != _currentIndex) {
           setState(() => _currentIndex = idx);
+          // Wait for rebuild so new tab content is focusable
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _tabFocusNodes[idx].focusInDirection(TraversalDirection.down);
+            }
+          });
+        } else {
+          // Same tab — use spatial navigation to find content below
+          primaryFocus?.focusInDirection(TraversalDirection.down);
         }
-        // Jump to first focusable in content area
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) primaryFocus?.nextFocus();
-        });
         return KeyEventResult.handled;
       }
       _moveFocusInDirection(primaryFocus, TraversalDirection.down);
@@ -153,14 +158,9 @@ class _HomeShellState extends State<HomeShell> {
       _tabFocusNodes[_currentIndex].requestFocus();
       return;
     }
-    final moved = current.focusInDirection(direction);
-    if (!moved) {
-      if (direction == TraversalDirection.down || direction == TraversalDirection.right) {
-        current.nextFocus();
-      } else {
-        current.previousFocus();
-      }
-    }
+    // Pure spatial navigation — no nextFocus/previousFocus fallback
+    // which would jump to wrong widgets across tab boundaries
+    current.focusInDirection(direction);
   }
 
   final _screens = const [
@@ -188,8 +188,6 @@ class _HomeShellState extends State<HomeShell> {
       backgroundColor: AppColors.bgDeep,
       body: Focus(
         onKeyEvent: _handleDpadKeyEvent,
-        child: FocusTraversalGroup(
-        policy: WidgetOrderTraversalPolicy(),
         child: Stack(
           children: [
             Column(
@@ -201,7 +199,8 @@ class _HomeShellState extends State<HomeShell> {
                     children: [
                       for (int i = 0; i < _screens.length; i++)
                         Focus(
-                          canRequestFocus: i == _currentIndex,
+                          // Wrapper is NOT focusable itself — only gates descendants
+                          canRequestFocus: false,
                           descendantsAreFocusable: i == _currentIndex,
                           descendantsAreTraversable: i == _currentIndex,
                           child: _screens[i],
@@ -211,11 +210,10 @@ class _HomeShellState extends State<HomeShell> {
                 ),
               ],
             ),
-          // Mini player overlay (hidden on HOME tab - split-screen handles it there)
-          if (_currentIndex != 0) _MiniPlayerOverlay(),
+            // Mini player overlay (hidden on HOME tab - split-screen handles it there)
+            if (_currentIndex != 0) _MiniPlayerOverlay(),
           ],
         ),
-      ),
       ),
       bottomNavigationBar: isWide
           ? null
