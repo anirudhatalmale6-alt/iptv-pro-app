@@ -27,6 +27,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _categoriesLoaded = false;
   final List<LiveStream> _recentChannels = [];
+  bool _showRecent = false;
   bool _showSearch = false;
   String _searchQuery = '';
   final _searchController = TextEditingController();
@@ -323,7 +324,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: TvFocusable(
-                    onTap: () => provider.loadLiveStreams(cat.categoryId),
+                    onTap: () {
+                      setState(() => _showRecent = false);
+                      provider.loadLiveStreams(cat.categoryId);
+                    },
                     borderRadius: BorderRadius.circular(20),
                     focusColor: AppColors.red,
                     child: Container(
@@ -386,8 +390,11 @@ class _HomeScreenState extends State<HomeScreen> {
             iconColor: AppColors.gold,
             label: 'Favorites',
             count: provider.favoriteStreamIds.length,
-            isSelected: provider.selectedLiveCategoryId == '__favorites__',
-            onTap: () => provider.loadLiveStreams('__favorites__'),
+            isSelected: !_showRecent && provider.selectedLiveCategoryId == '__favorites__',
+            onTap: () {
+              setState(() => _showRecent = false);
+              provider.loadLiveStreams('__favorites__');
+            },
           ),
           if (_recentChannels.isNotEmpty)
             _SidebarItem(
@@ -395,8 +402,8 @@ class _HomeScreenState extends State<HomeScreen> {
               iconColor: AppColors.blue,
               label: 'Recent',
               count: _recentChannels.length,
-              isSelected: false,
-              onTap: () {},
+              isSelected: _showRecent,
+              onTap: () => setState(() => _showRecent = true),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -407,9 +414,12 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: provider.liveCategories.length,
               itemBuilder: (context, index) {
                 final cat = provider.liveCategories[index];
-                final isSelected = cat.categoryId == provider.selectedLiveCategoryId;
+                final isSelected = !_showRecent && cat.categoryId == provider.selectedLiveCategoryId;
                 return TvFocusable(
-                  onTap: () => provider.loadLiveStreams(cat.categoryId),
+                  onTap: () {
+                    setState(() => _showRecent = false);
+                    provider.loadLiveStreams(cat.categoryId);
+                  },
                   borderRadius: BorderRadius.circular(4),
                   focusColor: AppColors.red,
                   child: Container(
@@ -527,7 +537,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: TvFocusable(
-                    onTap: () => provider.loadLiveStreams(cat.categoryId),
+                    onTap: () {
+                      setState(() => _showRecent = false);
+                      provider.loadLiveStreams(cat.categoryId);
+                    },
                     borderRadius: BorderRadius.circular(20),
                     focusColor: AppColors.red,
                     child: Container(
@@ -557,6 +570,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<LiveStream> _filterStreams(List<LiveStream> streams) {
     if (_searchQuery.length >= 2) return _searchResults;
+    if (_showRecent) return _recentChannels;
     return streams;
   }
 

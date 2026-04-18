@@ -55,8 +55,18 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
 
     final provider = context.read<AppProvider>();
     final url = provider.buildLiveUrl(channel.streamId);
-    final player = Player();
-    final videoController = VideoController(player);
+    // Use smaller buffer for multi-view to reduce memory pressure
+    final player = Player(
+      configuration: const PlayerConfiguration(
+        bufferSize: 2 * 1024 * 1024, // 2MB buffer (vs default ~32MB)
+      ),
+    );
+    final videoController = VideoController(
+      player,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: true,
+      ),
+    );
     _views[slot] = _ViewData(channel: channel, player: player, videoController: videoController, url: url);
 
     player.open(Media(url)).then((_) {
@@ -65,8 +75,23 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
         setState(() {});
       }
     }).catchError((e) {
+      debugPrint('Multi-view player $slot error: $e');
       if (mounted) setState(() {});
     });
+
+    // Monitor for stream errors and auto-recover
+    player.stream.error.listen((error) {
+      debugPrint('Multi-view stream $slot error: $error');
+      if (mounted && _views[slot]?.channel == channel) {
+        // Auto-restart after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && _views[slot]?.channel == channel) {
+            player.open(Media(url));
+          }
+        });
+      }
+    });
+
     setState(() {});
   }
 
