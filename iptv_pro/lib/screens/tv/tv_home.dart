@@ -45,6 +45,8 @@ class _TvHomeState extends State<TvHome> {
     ('Settings', Icons.settings_rounded),
   ];
 
+  Timer? _focusGuard;
+
   @override
   void initState() {
     super.initState();
@@ -52,10 +54,17 @@ class _TvHomeState extends State<TvHome> {
       _rootFocus.requestFocus();
       _loadSectionData(_Section.live);
     });
+    // Periodically ensure focus isn't lost (TV remotes can steal focus)
+    _focusGuard = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (mounted && !_rootFocus.hasFocus) {
+        _rootFocus.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _focusGuard?.cancel();
     _rootFocus.dispose();
     _sidebarScroll.dispose();
     _contentScroll.dispose();
@@ -107,19 +116,20 @@ class _TvHomeState extends State<TvHome> {
   }
 
   int get _gridColumns {
-    final w = MediaQuery.of(context).size.width - 240; // minus sidebar
+    final w = MediaQuery.of(context).size.width - 280; // minus sidebar
     if (_activeSection == _Section.guide || _activeSection == _Section.settings) return 1;
     if (_activeSection == _Section.movies || _activeSection == _Section.series) {
-      if (w > 1200) return 8;
-      if (w > 900) return 6;
-      if (w > 600) return 5;
-      return 4;
+      // Fewer, bigger cards for TV
+      if (w > 1400) return 5;
+      if (w > 1000) return 4;
+      if (w > 700) return 3;
+      return 2;
     }
-    // Live TV channels
-    if (w > 1200) return 7;
-    if (w > 900) return 5;
-    if (w > 600) return 4;
-    return 3;
+    // Live TV channels - bigger cards
+    if (w > 1400) return 5;
+    if (w > 1000) return 4;
+    if (w > 700) return 3;
+    return 2;
   }
 
   /// Total sidebar items: sections + "Favorites" + categories
@@ -182,11 +192,20 @@ class _TvHomeState extends State<TvHome> {
     }
   }
 
+  // ─── DEBUG ───
+  String _lastKeyDebug = '';
+
   // ─── KEY HANDLING ───
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    // Accept both KeyDown and KeyRepeat (some TV remotes use repeat for navigation)
+    if (event is KeyUpEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
+
+    // Debug: show what key the remote is sending
+    setState(() {
+      _lastKeyDebug = '${event.runtimeType}: ${key.keyLabel} (${key.keyId})';
+    });
 
     // Back button
     if (key == LogicalKeyboardKey.goBack ||
@@ -199,6 +218,11 @@ class _TvHomeState extends State<TvHome> {
       return KeyEventResult.ignored; // system handles exit
     }
 
+    // Only handle D-pad keys and select - let other keys pass through
+    if (!_isDpadKey(key) && !_isSelect(key)) {
+      return KeyEventResult.ignored;
+    }
+
     if (_zone == _Zone.sidebar) {
       return _handleSidebarKey(key);
     } else {
@@ -206,14 +230,27 @@ class _TvHomeState extends State<TvHome> {
     }
   }
 
+  bool _isDpadKey(LogicalKeyboardKey k) =>
+      k == LogicalKeyboardKey.arrowUp ||
+      k == LogicalKeyboardKey.arrowDown ||
+      k == LogicalKeyboardKey.arrowLeft ||
+      k == LogicalKeyboardKey.arrowRight;
+
   bool _isSelect(LogicalKeyboardKey k) =>
       k == LogicalKeyboardKey.select ||
       k == LogicalKeyboardKey.enter ||
-      k == LogicalKeyboardKey.gameButtonA;
+      k == LogicalKeyboardKey.numpadEnter ||
+      k == LogicalKeyboardKey.gameButtonA ||
+      k == LogicalKeyboardKey.space ||
+      k == LogicalKeyboardKey.mediaPlayPause;
 
   KeyEventResult _handleSidebarKey(LogicalKeyboardKey key) {
     final p = context.read<AppProvider>();
     final total = _totalSidebarItems(p);
+
+    // Safety clamp - prevent index from being out of range
+    if (_sidebarIndex >= total) _sidebarIndex = total - 1;
+    if (_sidebarIndex < 0) _sidebarIndex = 0;
 
     if (key == LogicalKeyboardKey.arrowUp) {
       if (_sidebarIndex > 0) {
@@ -243,8 +280,16 @@ class _TvHomeState extends State<TvHome> {
     final p = context.read<AppProvider>();
     final items = _getContentItems(p);
     final total = items.length;
+    if (total == 0) {
+      setState(() => _zone = _Zone.sidebar);
+      return KeyEventResult.handled;
+    }
     final cols = _gridColumns;
     final isList = cols == 1;
+
+    // Safety clamp
+    if (_contentIndex >= total) _contentIndex = total - 1;
+    if (_contentIndex < 0) _contentIndex = 0;
 
     if (key == LogicalKeyboardKey.arrowLeft) {
       if (isList || _contentIndex % cols == 0) {
@@ -293,11 +338,23 @@ class _TvHomeState extends State<TvHome> {
       // Section item selected
       final section = _Section.values[_sidebarIndex];
       if (section == _activeSection) return;
+      final prevSidebarIndex = _sidebarIndex;
       setState(() {
         _activeSection = section;
         _contentIndex = 0;
+        // Keep sidebar index at the section, don't let it drift
+        _sidebarIndex = prevSidebarIndex;
       });
       _loadSectionData(section);
+      // After data loads, clamp sidebar index to valid range
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final total = _totalSidebarItems(context.read<AppProvider>());
+          if (_sidebarIndex >= total) {
+            setState(() => _sidebarIndex = total - 1);
+          }
+        }
+      });
     } else {
       // Category item selected
       final catOffset = _sidebarIndex - _sectionDefs.length;
@@ -411,7 +468,7 @@ class _TvHomeState extends State<TvHome> {
 
   void _scrollSidebar() {
     if (!_sidebarScroll.hasClients) return;
-    const itemH = 48.0;
+    const itemH = 56.0;
     final offset = _sidebarIndex * itemH;
     final viewport = _sidebarScroll.position.viewportDimension;
     final current = _sidebarScroll.offset;
@@ -436,7 +493,7 @@ class _TvHomeState extends State<TvHome> {
     if (!_contentScroll.hasClients) return;
     final cols = _gridColumns;
     final isList = cols == 1;
-    final rowH = isList ? 64.0 : (_activeSection == _Section.live ? 140.0 : 220.0);
+    final rowH = isList ? 72.0 : (_activeSection == _Section.live ? 196.0 : 316.0);
     final row = isList ? _contentIndex : _contentIndex ~/ cols;
     final offset = row * rowH;
     final viewport = _contentScroll.position.viewportDimension;
@@ -469,11 +526,33 @@ class _TvHomeState extends State<TvHome> {
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
         child: Consumer<AppProvider>(
-          builder: (context, provider, _) => Row(
+          builder: (context, provider, _) => Stack(
             children: [
-              _buildSidebar(provider),
-              VerticalDivider(width: 1, color: AppColors.red.withOpacity(0.15)),
-              Expanded(child: _buildContent(provider)),
+              Row(
+                children: [
+                  _buildSidebar(provider),
+                  VerticalDivider(width: 1, color: AppColors.red.withOpacity(0.15)),
+                  Expanded(child: _buildContent(provider)),
+                ],
+              ),
+              // Debug: show last key pressed and focus state
+              if (_lastKeyDebug.isNotEmpty)
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.red.withOpacity(0.5)),
+                    ),
+                    child: Text(
+                      'KEY: $_lastKeyDebug | Zone: ${_zone.name} | Sidebar: $_sidebarIndex | Content: $_contentIndex | Focus: ${_rootFocus.hasFocus}',
+                      style: const TextStyle(color: Colors.yellow, fontSize: 11, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -490,18 +569,18 @@ class _TvHomeState extends State<TvHome> {
         _activeSection == _Section.series;
 
     return Container(
-      width: 240,
+      width: 280,
       color: AppColors.bgSidebar,
       child: Column(
         children: [
           // Logo
           Container(
-            height: 64,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            height: 72,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             alignment: Alignment.centerLeft,
             child: Image.asset(
               'assets/images/veltrix_header.png',
-              height: 36,
+              height: 42,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const Text(
                 'VELTRIX TV',
@@ -602,7 +681,7 @@ class _TvHomeState extends State<TvHome> {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 100),
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       decoration: BoxDecoration(
         color: isFocused
             ? AppColors.red.withOpacity(0.2)
@@ -616,13 +695,13 @@ class _TvHomeState extends State<TvHome> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
             if (icon != null) ...[
               Icon(
                 icon,
-                size: 20,
+                size: 24,
                 color: isFocused
                     ? AppColors.red
                     : iconColor ?? (isActive ? AppColors.white : AppColors.whiteDim),
@@ -634,7 +713,7 @@ class _TvHomeState extends State<TvHome> {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: isSection ? 14 : 13,
+                  fontSize: isSection ? 17 : 15,
                   fontWeight: isFocused || isActive ? FontWeight.w600 : FontWeight.w400,
                   color: isFocused || isActive ? AppColors.white : AppColors.whiteDim,
                 ),
@@ -690,16 +769,16 @@ class _TvHomeState extends State<TvHome> {
       children: [
         // Header bar
         Container(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+          padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
           child: Row(
             children: [
               Text(
                 _sectionLabel,
-                style: const TextStyle(color: AppColors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                style: const TextStyle(color: AppColors.white, fontSize: 28, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.red.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
@@ -807,11 +886,11 @@ class _TvHomeState extends State<TvHome> {
   Widget _channelCard(LiveStream s, bool focused) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 100),
-      height: 120,
+      height: 180,
       decoration: _cardDecoration(focused),
       transform: focused ? _scaleUp : Matrix4.identity(),
       transformAlignment: Alignment.center,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(16),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -820,18 +899,19 @@ class _TvHomeState extends State<TvHome> {
                 ? CachedNetworkImage(
                     imageUrl: s.streamIcon!,
                     fit: BoxFit.contain,
-                    maxWidthDiskCache: 200,
+                    maxWidthDiskCache: 600,
+                    memCacheWidth: 400,
                     fadeInDuration: const Duration(milliseconds: 100),
                     placeholder: (_, __) => _initials(s.name),
                     errorWidget: (_, __, ___) => _initials(s.name),
                   )
                 : _initials(s.name),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           Text(
             _cleanText(s.name),
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 15,
               fontWeight: FontWeight.w600,
               color: focused ? Colors.white : AppColors.whiteDim,
             ),
@@ -847,7 +927,7 @@ class _TvHomeState extends State<TvHome> {
   Widget _movieCard(VodStream v, bool focused) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 100),
-      height: 200,
+      height: 300,
       decoration: _cardDecoration(focused),
       transform: focused ? _scaleUp : Matrix4.identity(),
       transformAlignment: Alignment.center,
@@ -859,7 +939,8 @@ class _TvHomeState extends State<TvHome> {
               ? CachedNetworkImage(
                   imageUrl: v.streamIcon!,
                   fit: BoxFit.cover,
-                  maxWidthDiskCache: 300,
+                  maxWidthDiskCache: 800,
+                  memCacheWidth: 500,
                   placeholder: (_, __) => Container(color: AppColors.bgCard),
                   errorWidget: (_, __, ___) => _initials(v.name),
                 )
@@ -874,7 +955,7 @@ class _TvHomeState extends State<TvHome> {
   Widget _seriesCard(SeriesItem s, bool focused) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 100),
-      height: 200,
+      height: 300,
       decoration: _cardDecoration(focused),
       transform: focused ? _scaleUp : Matrix4.identity(),
       transformAlignment: Alignment.center,
@@ -886,7 +967,8 @@ class _TvHomeState extends State<TvHome> {
               ? CachedNetworkImage(
                   imageUrl: s.cover!,
                   fit: BoxFit.cover,
-                  maxWidthDiskCache: 300,
+                  maxWidthDiskCache: 800,
+                  memCacheWidth: 500,
                   placeholder: (_, __) => Container(color: AppColors.bgCard),
                   errorWidget: (_, __, ___) => _initials(s.name),
                 )
@@ -902,35 +984,35 @@ class _TvHomeState extends State<TvHome> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 100),
       margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
         color: focused ? AppColors.red.withOpacity(0.15) : AppColors.bgCard,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: focused ? AppColors.red : Colors.transparent,
-          width: 2,
+          width: 2.5,
         ),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 40,
-            height: 40,
+            width: 56,
+            height: 56,
             child: s.streamIcon != null && s.streamIcon!.isNotEmpty
                 ? CachedNetworkImage(
                     imageUrl: s.streamIcon!,
                     fit: BoxFit.contain,
-                    maxWidthDiskCache: 100,
+                    maxWidthDiskCache: 200,
                   )
                 : _initials(s.name),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 18),
           Expanded(
             child: Text(
               _cleanText(s.name),
               style: TextStyle(
                 color: focused ? Colors.white : AppColors.whiteDim,
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
@@ -940,7 +1022,7 @@ class _TvHomeState extends State<TvHome> {
           Icon(
             Icons.play_circle_outline,
             color: focused ? AppColors.red : AppColors.whiteMuted,
-            size: 24,
+            size: 32,
           ),
         ],
       ),
@@ -1040,7 +1122,7 @@ class _TvHomeState extends State<TvHome> {
       left: 0,
       right: 0,
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
@@ -1050,7 +1132,7 @@ class _TvHomeState extends State<TvHome> {
         ),
         child: Text(
           _cleanText(title),
-          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1060,22 +1142,22 @@ class _TvHomeState extends State<TvHome> {
 
   Widget _ratingBadge(double rating) {
     return Positioned(
-      top: 6,
-      right: 6,
+      top: 10,
+      right: 10,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.75),
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.star_rounded, color: AppColors.gold, size: 12),
-            const SizedBox(width: 3),
+            const Icon(Icons.star_rounded, color: AppColors.gold, size: 16),
+            const SizedBox(width: 4),
             Text(
               rating.toStringAsFixed(1),
-              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -1105,17 +1187,17 @@ class _TvHomeState extends State<TvHome> {
 
     return Center(
       child: Container(
-        width: 48,
-        height: 48,
+        width: 72,
+        height: 72,
         decoration: BoxDecoration(
           color: color.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Center(
           child: Text(
             initials,
-            style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w800),
+            style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w800),
           ),
         ),
       ),
@@ -1123,6 +1205,11 @@ class _TvHomeState extends State<TvHome> {
   }
 
   String _cleanText(String text) {
-    return text.replaceAll(RegExp(r'[^\x20-\x7E\xA0-\xFF]'), '').trim();
+    return text
+        .replaceAll(RegExp(r'[\u{1F000}-\u{1FFFF}]', unicode: true), '')
+        .replaceAll(RegExp(r'[\u{2600}-\u{27BF}]', unicode: true), '')
+        .replaceAll(RegExp(r'[\u{FE00}-\u{FE0F}]', unicode: true), '')
+        .replaceAll(RegExp(r'[\u{200D}]', unicode: true), '')
+        .trim();
   }
 }

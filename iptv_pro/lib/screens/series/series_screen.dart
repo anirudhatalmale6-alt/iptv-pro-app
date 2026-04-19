@@ -8,9 +8,15 @@ import '../../models/xtream_data.dart';
 import '../../providers/app_provider.dart';
 import 'series_detail_screen.dart';
 
-/// Strip emoji and non-ASCII characters that TV fonts can't render
+/// Strip only emoji/symbol characters but keep Arabic, Cyrillic, CJK, etc.
 String _cleanSeriesText(String text) {
-  return text.replaceAll(RegExp(r'[^\x20-\x7E\xA0-\xFF]'), '').trim();
+  // Remove emoji and misc symbols but preserve all language scripts
+  return text
+      .replaceAll(RegExp(r'[\u{1F000}-\u{1FFFF}]', unicode: true), '') // emoji & symbols
+      .replaceAll(RegExp(r'[\u{2600}-\u{27BF}]', unicode: true), '')   // misc symbols
+      .replaceAll(RegExp(r'[\u{FE00}-\u{FE0F}]', unicode: true), '')   // variation selectors
+      .replaceAll(RegExp(r'[\u{200D}]', unicode: true), '')             // zero-width joiner
+      .trim();
 }
 
 class SeriesScreen extends StatefulWidget {

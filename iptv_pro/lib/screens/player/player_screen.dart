@@ -69,6 +69,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   SubtitleTrack? _activeSubtitleTrack;
   String _subtitleText = '';
 
+  // Video fit mode: cycle through contain -> fill -> cover
+  static const _fitModes = [BoxFit.contain, BoxFit.fill, BoxFit.cover];
+  static const _fitLabels = ['Fit', 'Stretch', 'Crop'];
+  int _fitIndex = 0;
+
   final List<StreamSubscription> _subscriptions = [];
 
   @override
@@ -475,6 +480,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return Video(
         controller: _videoController!,
         controls: NoVideoControls,
+        fit: _fitModes[_fitIndex],
       );
     }
     return const SizedBox();
@@ -540,6 +546,35 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
                   ],
+                ),
+                // Aspect ratio / fit toggle
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _fitIndex = (_fitIndex + 1) % _fitModes.length;
+                    });
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(_fitLabels[_fitIndex], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        duration: const Duration(seconds: 1),
+                        backgroundColor: AppColors.bgCard,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.white54),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _fitLabels[_fitIndex],
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.info_outline, color: Colors.white),

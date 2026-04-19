@@ -11,10 +11,14 @@ import '../../widgets/tv_focusable.dart';
 import '../player/player_screen.dart';
 import '../player/multi_view_screen.dart';
 
-/// Strip emoji and non-ASCII characters that TV fonts can't render
+/// Strip only emoji/symbol characters but keep Arabic, Cyrillic, CJK, etc.
 String _cleanText(String text) {
-  // Remove emoji, symbols, and other non-basic characters
-  return text.replaceAll(RegExp(r'[^\x20-\x7E\xA0-\xFF]'), '').trim();
+  return text
+      .replaceAll(RegExp(r'[\u{1F000}-\u{1FFFF}]', unicode: true), '')
+      .replaceAll(RegExp(r'[\u{2600}-\u{27BF}]', unicode: true), '')
+      .replaceAll(RegExp(r'[\u{FE00}-\u{FE0F}]', unicode: true), '')
+      .replaceAll(RegExp(r'[\u{200D}]', unicode: true), '')
+      .trim();
 }
 
 class HomeScreen extends StatefulWidget {
