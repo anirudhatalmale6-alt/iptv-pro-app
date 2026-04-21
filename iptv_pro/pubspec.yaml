@@ -1,7 +1,7 @@
 name: iptv_pro
 description: "Veltrix TV - Premium Streaming App"
 publish_to: 'none'
-version: 5.3.1+31
+version: 5.4.0+32
 
 environment:
   sdk: ^3.6.1

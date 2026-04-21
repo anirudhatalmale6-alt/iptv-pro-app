@@ -61,6 +61,9 @@ class _MultiViewScreenState extends State<MultiViewScreen> {
         bufferSize: 2 * 1024 * 1024, // 2MB buffer (vs default ~32MB)
       ),
     );
+    if (player.platform is NativePlayer) {
+      (player.platform as NativePlayer).setProperty('user-agent', 'Lavf/60.3.100');
+    }
     final videoController = VideoController(
       player,
       configuration: const VideoControllerConfiguration(

@@ -2,6 +2,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/xtream_data.dart';
 
+/// HTTP headers matching TiViMate for IPTV server compatibility
+const _iptvHeaders = {
+  'User-Agent': 'Lavf/60.3.100',
+  'Connection': 'keep-alive',
+  'Accept': '*/*',
+};
+
 class XtreamService {
   String _server = '';
   String _username = '';
@@ -27,7 +34,7 @@ class XtreamService {
 
   Future<Map<String, dynamic>> _getJson(String url) async {
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+      final response = await http.get(Uri.parse(url), headers: _iptvHeaders).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final body = response.body.trim();
         if (body.isEmpty || body == 'null' || body == 'false') {
@@ -42,7 +49,7 @@ class XtreamService {
   }
 
   Future<List<dynamic>> _getList(String url, {Duration? timeout}) async {
-    final response = await http.get(Uri.parse(url)).timeout(timeout ?? const Duration(seconds: 90));
+    final response = await http.get(Uri.parse(url), headers: _iptvHeaders).timeout(timeout ?? const Duration(seconds: 90));
     if (response.statusCode == 200) {
       final body = response.body.trim();
       // Handle empty, null, false, or non-array responses from Xtream API

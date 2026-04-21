@@ -377,7 +377,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_diagResults['Series Categories']?.success == true && _diagResults['Series Categories']!.count > 0) {
       // Load a series with first available category
       try {
-        final catResponse = await http.get(Uri.parse('$apiUrl?username=$user&password=$pass&action=get_series_categories')).timeout(const Duration(seconds: 30));
+        final catResponse = await http.get(Uri.parse('$apiUrl?username=$user&password=$pass&action=get_series_categories'), headers: {'User-Agent': 'Lavf/60.3.100', 'Connection': 'keep-alive'}).timeout(const Duration(seconds: 30));
         final cats = json.decode(catResponse.body) as List;
         if (cats.isNotEmpty) {
           final catId = cats.first['category_id'];
@@ -395,7 +395,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _testEndpoint(String name, String url, {bool isJson = false, bool isList = false, bool checkAuth = false, bool checkEpg = false}) async {
     try {
       final stopwatch = Stopwatch()..start();
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+      final response = await http.get(Uri.parse(url), headers: {'User-Agent': 'Lavf/60.3.100', 'Connection': 'keep-alive'}).timeout(const Duration(seconds: 30));
       stopwatch.stop();
       final ms = stopwatch.elapsedMilliseconds;
 

@@ -123,6 +123,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Future<void> _initPlayer() async {
     try {
       _player = Player();
+      // Set IPTV-compatible user-agent (matches TiViMate for server compatibility)
+      if (_player!.platform is NativePlayer) {
+        (_player!.platform as NativePlayer).setProperty('user-agent', 'Lavf/60.3.100');
+        (_player!.platform as NativePlayer).setProperty('network-timeout', '30');
+      }
       _videoController = VideoController(_player!);
       _setupListeners();
       await _player!.open(Media(_currentUrl));

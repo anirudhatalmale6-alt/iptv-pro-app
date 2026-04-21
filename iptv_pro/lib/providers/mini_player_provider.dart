@@ -93,6 +93,9 @@ class MiniPlayerProvider extends ChangeNotifier {
     try {
       if (_player == null) {
         _player = Player();
+        if (_player!.platform is NativePlayer) {
+          (_player!.platform as NativePlayer).setProperty('user-agent', 'Lavf/60.3.100');
+        }
         _videoController = VideoController(_player!);
       }
       await _player!.open(Media(url));
